@@ -68,7 +68,6 @@ def parse_player(api_url: str, player_id: str) -> dict:
 def parse_tournament(tournament: dict, player_id=None) -> dict:
     # collect all wins and losses
     for set_data in tournament["sets"]:
-        print(set_data)
         # data = dict(p1_tag=set_data["p1_tag"], p2_tag=set_data["p2_tag"])
         ID_TO_NAME[set_data["p1_id"]] = set_data["p1_tag"]
         ID_TO_NAME[set_data["p2_id"]] = set_data["p2_tag"]
@@ -76,14 +75,21 @@ def parse_tournament(tournament: dict, player_id=None) -> dict:
         loser_id = (
             set([set_data["p1_id"], set_data["p2_id"]]) - set([set_data["winner_id"]])
         ).pop()
-        print(winner_id, loser_id)
-        if set_data["winner_id"] == player_id:
+        print(f"{ID_TO_NAME[winner_id]} beats {ID_TO_NAME[loser_id]}")
+        if set_data["dq"]:
+            logger.info(
+                f'dq found, skipping {set_data["p1_tag"]} vs {set_data["p2_tag"]}'
+            )
+            continue
+        if winner_id == player_id:
             # player won
             PLAYER_TO_WINS[player_id][loser_id] += 1
-            pass
-        else:
+        elif loser_id == player_id:
             # player lost
             PLAYER_TO_LOSSES[player_id][winner_id] += 1
+        else:
+            logger.error("unknown result, no valid winner_id found")
+            logger.info(set_data)
 
 
 def show_results():
