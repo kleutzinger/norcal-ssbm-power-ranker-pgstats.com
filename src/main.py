@@ -4,6 +4,7 @@ todo: what about DQs?
 """
 
 import csv
+import json
 import requests
 import os
 from datetime import datetime
@@ -15,6 +16,8 @@ logger = logging.getLogger(__name__)
 from collections import Counter, defaultdict
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "good-players.csv")
+
+
 CUT_OFF_DATE_START = datetime(2022, 11, 1)
 CUT_OFF_DATE_END = datetime(2023, 5, 7)
 
@@ -25,8 +28,33 @@ ID_TO_NUM_TOURNAMENTS = defaultdict(int)
 ID_TO_NUM_TOTAL_SETS = defaultdict(int)
 
 
+def pg_url_to_id_url(url: str) -> tuple[str, str]:
+    player_id = url.split("?id=")[1]
+    return (
+        player_id,
+        f"https://api.pgstats.com/players/data?playerId={player_id}&game=melee",
+    )
+
+
+COMBINE_JSON = os.path.join(os.path.dirname(__file__), "combine_players.json")
+with open(COMBINE_JSON) as f:
+    combine_players = json.load(f)
+
+COMBINE_LOOKUP = {}
+for player_name, player_ids in combine_players.items():
+    for player_id in player_ids:
+        # combine duplicate players to the first player_id
+        COMBINE_LOOKUP[pg_url_to_id_url(player_id)[0]] = pg_url_to_id_url(
+            player_ids[0]
+        )[0]
+
+print(COMBINE_LOOKUP)
+
+
 def add_tag(player_id: str, tag: str):
     tag = tag.replace(",", "-")
+    if tag == "":
+        tag = "_null"
     ID_TO_NAME[player_id] = tag
 
 
@@ -51,18 +79,6 @@ def get_or_set_player_badge_count(player_id: str) -> int:
         num_badges = len(data["result"]["badges"]["by_events"])
         players[player_id + "_badges"] = num_badges
         return num_badges
-
-
-def player_id_and_api_url(url: str) -> tuple[str, str]:
-    # 'https://api.pgstats.com/players/data?playerId=S155114&game=melee'
-    # 'https://www.pgstats.com/melee/player/Kevbot?id=S12293'
-    # get player_id
-    player_id = url.split("?id=")[1]
-    print(player_id)
-    return (
-        player_id,
-        f"https://api.pgstats.com/players/data?playerId={player_id}&game=melee",
-    )
 
 
 def is_valid_tournament(tournament: dict) -> bool:
@@ -90,9 +106,18 @@ def parse_player(api_url: str, player_id: str) -> dict:
 
 
 def parse_tournament(tournament: dict, player_id=None) -> None:
+    def rewrite_ids(set_data):
+        for key in ["p1_id", "p2_id", "winner_id"]:
+            if set_data[key] in COMBINE_LOOKUP:
+                set_data[key] = COMBINE_LOOKUP[set_data[key]]
+        return set_data
+
     # collect all wins and losses
     for set_data in tournament["sets"]:
         # data = dict(p1_tag=set_data["p1_tag"], p2_tag=set_data["p2_tag"])
+        if player_id in COMBINE_LOOKUP:
+            player_id = COMBINE_LOOKUP[player_id]
+        set_data = rewrite_ids(set_data)
         add_tag(set_data["p1_id"], set_data["p1_tag"])
         add_tag(set_data["p2_id"], set_data["p2_tag"])
         get_or_set_player_badge_count(set_data["p1_id"])
@@ -183,7 +208,9 @@ def main():
     for link in pgstats_links:
         player_name = link[0]
         print("parsing, player_name=", player_name)
-        player_id, player_link = player_id_and_api_url(link[1])
+        player_id, player_link = pg_url_to_id_url(link[1])
+        if player_id in COMBINE_LOOKUP:
+            player_id = COMBINE_LOOKUP[player_id]
         parse_player(player_link, player_id)
     show_results()
     write_wins_and_losses_to_csv()
