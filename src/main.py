@@ -8,6 +8,7 @@ import requests
 import os
 from datetime import datetime
 import logging
+import shelve
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +23,32 @@ PLAYER_TO_LOSSES = defaultdict(Counter)
 ID_TO_NAME = {}
 
 
+def add_tag(player_id: str, tag: str):
+    tag = tag.replace(",", "-")
+    ID_TO_NAME[player_id] = tag
+
+
 with open(CSV_PATH) as f:
     f_csv = csv.reader(f)
     headers = next(f_csv)
     pgstats_links = []
     for row in f_csv:
         pgstats_links.append(row)
+
+
+players = shelve.open("players.db")
+
+
+def get_or_set_player_badge_count(player_id: str) -> int:
+    if player_id + "_badges" in players:
+        return players[player_id + "_badges"]
+    else:
+        data = requests.get(
+            f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
+        ).json()
+        num_badges = len(data["result"]["badges"]["by_events"])
+        players[player_id + "_badges"] = num_badges
+        return num_badges
 
 
 def player_id_and_api_url(url: str) -> tuple[str, str]:
@@ -69,8 +90,10 @@ def parse_tournament(tournament: dict, player_id=None) -> dict:
     # collect all wins and losses
     for set_data in tournament["sets"]:
         # data = dict(p1_tag=set_data["p1_tag"], p2_tag=set_data["p2_tag"])
-        ID_TO_NAME[set_data["p1_id"]] = set_data["p1_tag"]
-        ID_TO_NAME[set_data["p2_id"]] = set_data["p2_tag"]
+        add_tag(set_data["p1_id"], set_data["p1_tag"])
+        add_tag(set_data["p2_id"], set_data["p2_tag"])
+        get_or_set_player_badge_count(set_data["p1_id"])
+        get_or_set_player_badge_count(set_data["p2_id"])
         winner_id = set_data["winner_id"]
         loser_id = (
             set([set_data["p1_id"], set_data["p2_id"]]) - set([set_data["winner_id"]])
@@ -110,11 +133,17 @@ def get_h2h_str(player_id, opponent_id) -> str:
 
 def write_wins_and_losses_to_csv():
     def wins_losses_to_string(player_id, sets) -> str:
-        for opponent_id, count in sets.items():
+        for opponent_id, count in sorted(
+            sets.items(), key=lambda x: players[x[0] + "_badges"], reverse=True
+        ):
             yield f"{ID_TO_NAME[opponent_id]} ({get_h2h_str(player_id, opponent_id)})"
 
     with open("wins.csv", "w", newline="") as f:
-        for player_id, losses in PLAYER_TO_WINS.items():
+        for player_id, losses in sorted(
+            PLAYER_TO_WINS.items(),
+            key=lambda x: players[x[0] + "_badges"],
+            reverse=True,
+        ):
             f.write(
                 ID_TO_NAME[player_id]
                 + ","
@@ -123,11 +152,15 @@ def write_wins_and_losses_to_csv():
             )
 
     with open("losses.csv", "w", newline="") as f:
-        for player_id, losses in PLAYER_TO_LOSSES.items():
+        for player_id, losses in sorted(
+            PLAYER_TO_LOSSES.items(),
+            key=lambda x: players[x[0] + "_badges"],
+            reverse=True,
+        ):
             f.write(
                 ID_TO_NAME[player_id]
                 + ","
-                + ", ".join(list(wins_losses_to_string(player_id, losses)))
+                + ", ".join(reversed(list(wins_losses_to_string(player_id, losses))))
                 + "\n"
             )
 
@@ -140,6 +173,7 @@ def main():
         parse_player(player_link, player_id)
     show_results()
     write_wins_and_losses_to_csv()
+    players.close()
 
 
 if __name__ == "__main__":
