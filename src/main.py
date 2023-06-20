@@ -21,6 +21,8 @@ CUT_OFF_DATE_END = datetime(2023, 5, 7)
 PLAYER_TO_WINS = defaultdict(Counter)
 PLAYER_TO_LOSSES = defaultdict(Counter)
 ID_TO_NAME = {}
+ID_TO_NUM_TOURNAMENTS = defaultdict(int)
+ID_TO_NUM_TOTAL_SETS = defaultdict(int)
 
 
 def add_tag(player_id: str, tag: str):
@@ -82,11 +84,12 @@ def parse_player(api_url: str, player_id: str) -> dict:
             print("skipping tournament", tournament_data["info"]["tournament_name"])
             continue
         print("reading ", tournament_data["info"]["tournament_name"])
+        ID_TO_NUM_TOURNAMENTS[player_id] += 1
         parse_tournament(tournament_data, player_id)
     pass
 
 
-def parse_tournament(tournament: dict, player_id=None) -> dict:
+def parse_tournament(tournament: dict, player_id=None) -> None:
     # collect all wins and losses
     for set_data in tournament["sets"]:
         # data = dict(p1_tag=set_data["p1_tag"], p2_tag=set_data["p2_tag"])
@@ -104,6 +107,7 @@ def parse_tournament(tournament: dict, player_id=None) -> dict:
                 f'dq found, skipping {set_data["p1_tag"]} vs {set_data["p2_tag"]}'
             )
             continue
+        ID_TO_NUM_TOTAL_SETS[player_id] += 1
         if winner_id == player_id:
             # player won
             PLAYER_TO_WINS[player_id][loser_id] += 1
@@ -132,6 +136,14 @@ def get_h2h_str(player_id, opponent_id) -> str:
 
 
 def write_wins_and_losses_to_csv():
+    def total_win_loss_tournies(player_id) -> str:
+        # get total number of wins for a player
+        w = sum(PLAYER_TO_WINS[player_id].values())
+        l = sum(PLAYER_TO_LOSSES[player_id].values())
+        tot = w + l
+        trny = ID_TO_NUM_TOURNAMENTS[player_id]
+        return f",{w}-{l} record, {tot} sets, {trny} tournaments, "
+
     def wins_losses_to_string(player_id, sets) -> str:
         for opponent_id, count in sorted(
             sets.items(), key=lambda x: players[x[0] + "_badges"], reverse=True
@@ -146,6 +158,7 @@ def write_wins_and_losses_to_csv():
         ):
             f.write(
                 ID_TO_NAME[player_id]
+                + total_win_loss_tournies(player_id)
                 + ","
                 + ", ".join(list(wins_losses_to_string(player_id, losses)))
                 + "\n"
@@ -159,6 +172,7 @@ def write_wins_and_losses_to_csv():
         ):
             f.write(
                 ID_TO_NAME[player_id]
+                + total_win_loss_tournies(player_id)
                 + ","
                 + ", ".join(reversed(list(wins_losses_to_string(player_id, losses))))
                 + "\n"
