@@ -161,13 +161,13 @@ def get_h2h_str(player_id, opponent_id) -> str:
 
 
 def write_wins_and_losses_to_csv():
-    def total_win_loss_tournies(player_id) -> str:
+    def leftmost_colum_gen(player_id) -> str:
         # get total number of wins for a player
         w = sum(PLAYER_TO_WINS[player_id].values())
         l = sum(PLAYER_TO_LOSSES[player_id].values())
         tot = w + l
         trny = ID_TO_NUM_TOURNAMENTS[player_id]
-        return f",{w}-{l} record, {tot} sets, {trny} tournaments, "
+        return f"{ID_TO_NAME[player_id]} ({tot}),{w}-{l} in {trny} "
 
     def wins_losses_to_string(player_id, sets) -> str:
         for opponent_id, count in sorted(
@@ -182,8 +182,7 @@ def write_wins_and_losses_to_csv():
             reverse=True,
         ):
             f.write(
-                ID_TO_NAME[player_id]
-                + total_win_loss_tournies(player_id)
+                leftmost_colum_gen(player_id)
                 + ","
                 + ", ".join(list(wins_losses_to_string(player_id, losses)))
                 + "\n"
@@ -196,8 +195,7 @@ def write_wins_and_losses_to_csv():
             reverse=True,
         ):
             f.write(
-                ID_TO_NAME[player_id]
-                + total_win_loss_tournies(player_id)
+                leftmost_colum_gen(player_id)
                 + ","
                 + ", ".join(reversed(list(wins_losses_to_string(player_id, losses))))
                 + "\n"
