@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from collections import Counter, defaultdict
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "good-players.csv")
+JSON_DIR = os.path.join(os.path.dirname(__file__), "json")
 
 
 CUT_OFF_DATE_START = datetime(2022, 11, 1)

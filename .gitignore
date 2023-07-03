@@ -156,3 +156,5 @@ cython_debug/
 players.db.bak
 players.db.dat
 players.db.dir
+
+json/*.json
