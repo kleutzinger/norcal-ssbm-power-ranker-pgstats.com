@@ -10,6 +10,19 @@ import os
 from datetime import datetime
 import logging
 import shelve
+from sqlitedict import SqliteDict
+import sys
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+from loguru import logger
+
+
+logger.remove()
+logger.add(sys.stdout, level="DEBUG")
+results_db = SqliteDict("db.sqlite", tablename="results", autocommit=True)
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +50,10 @@ def pg_url_to_id_url(url: str) -> tuple[str, str]:
     )
 
 
+def id_to_url(player_id: str) -> str:
+    return f"https://api.pgstats.com/players/data?playerId={player_id}&game=melee"
+
+
 COMBINE_JSON = os.path.join(os.path.dirname(__file__), "combine_players.json")
 with open(COMBINE_JSON) as f:
     combine_players = json.load(f)
@@ -48,8 +65,6 @@ for player_name, player_ids in combine_players.items():
         COMBINE_LOOKUP[pg_url_to_id_url(player_id)[0]] = pg_url_to_id_url(
             player_ids[0]
         )[0]
-
-print(COMBINE_LOOKUP)
 
 
 def add_tag(player_id: str, tag: str):
@@ -67,18 +82,19 @@ with open(CSV_PATH) as f:
         pgstats_links.append(row)
 
 
-players = shelve.open("players.db")
+players_badges = shelve.open("players.db")
 
 
 def get_or_set_player_badge_count(player_id: str) -> int:
-    if player_id + "_badges" in players:
-        return players[player_id + "_badges"]
+    if player_id in players_badges:
+        logger.info(player_id, "in cache")
+        return players_badges[player_id]
     else:
         data = requests.get(
             f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
         ).json()
         num_badges = len(data["result"]["badges"]["by_events"])
-        players[player_id + "_badges"] = num_badges
+        players_badges[player_id] = num_badges
         return num_badges
 
 
@@ -93,17 +109,40 @@ def is_valid_tournament(tournament: dict) -> bool:
     return True
 
 
-def parse_player(api_url: str, player_id: str) -> dict:
-    js = requests.get(api_url)
-    results = js.json()["result"]
+def get_player_results(player_id: str) -> dict:
+    if player_id in results_db:
+        return results_db[player_id]
+    else:
+        js = requests.get(id_to_url(player_id))
+        results = js.json()["result"]
+        results_db[player_id] = results
+        return results
+
+
+def refresh_db():
+    for key in results_db:
+        del results_db[key]
+    for key in players_badges:
+        del players_badges[key]
+    init_all_players_in_db()
+
+
+def get_and_parse_player(api_url: str, player_id: str) -> None:
+    results = get_player_results(player_id)
+
     for tournament_id, tournament_data in results.items():
         if not is_valid_tournament(tournament_data):
-            print("skipping tournament", tournament_data["info"]["tournament_name"])
+            logger.debug(
+                "skipping tournament" + tournament_data["info"]["tournament_name"]
+            )
             continue
-        print("reading ", tournament_data["info"]["tournament_name"])
+        logger.debug("reading " + tournament_data["info"]["tournament_name"])
         ID_TO_NUM_TOURNAMENTS[player_id] += 1
         parse_tournament(tournament_data, player_id)
-    pass
+
+
+def all_ids():
+    return results_db.keys()
 
 
 def parse_tournament(tournament: dict, player_id=None) -> None:
@@ -127,7 +166,7 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
         loser_id = (
             set([set_data["p1_id"], set_data["p2_id"]]) - set([set_data["winner_id"]])
         ).pop()
-        print(f"{ID_TO_NAME[winner_id]} beats {ID_TO_NAME[loser_id]}")
+        logger.debug(f"{ID_TO_NAME[winner_id]} beats {ID_TO_NAME[loser_id]}")
         if set_data["dq"]:
             logger.info(
                 f'dq found, skipping {set_data["p1_tag"]} vs {set_data["p2_tag"]}'
@@ -172,14 +211,16 @@ def write_wins_and_losses_to_csv():
 
     def wins_losses_to_string(player_id, sets) -> str:
         for opponent_id, count in sorted(
-            sets.items(), key=lambda x: players[x[0] + "_badges"], reverse=True
+            sets.items(),
+            key=lambda x: players_badges[x[0]],
+            reverse=True,
         ):
             yield f"{ID_TO_NAME[opponent_id]} ({get_h2h_str(player_id, opponent_id)})"
 
     with open("wins.csv", "w", newline="") as f:
         for player_id, losses in sorted(
             PLAYER_TO_WINS.items(),
-            key=lambda x: players[x[0] + "_badges"],
+            key=lambda x: players_badges[x[0]],
             reverse=True,
         ):
             f.write(
@@ -192,7 +233,7 @@ def write_wins_and_losses_to_csv():
     with open("losses.csv", "w", newline="") as f:
         for player_id, losses in sorted(
             PLAYER_TO_LOSSES.items(),
-            key=lambda x: players[x[0] + "_badges"],
+            key=lambda x: players_badges[x[0]],
             reverse=True,
         ):
             f.write(
@@ -203,18 +244,19 @@ def write_wins_and_losses_to_csv():
             )
 
 
-def main():
+def init_all_players_in_db():
     for link in pgstats_links:
         player_name = link[0]
-        print("parsing, player_name=", player_name)
+        logger.debug("parsing, player_name=", player_name)
         player_id, player_link = pg_url_to_id_url(link[1])
         if player_id in COMBINE_LOOKUP:
             player_id = COMBINE_LOOKUP[player_id]
-        parse_player(player_link, player_id)
+        get_and_parse_player(player_link, player_id)
+        logger.info("got player", player_name)
     show_results()
     write_wins_and_losses_to_csv()
-    players.close()
+    # badge_db.close()
 
 
 if __name__ == "__main__":
-    main()
+    init_all_players_in_db()
