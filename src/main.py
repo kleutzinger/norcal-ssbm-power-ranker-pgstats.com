@@ -3,33 +3,25 @@ todo: what about DQs?
     nmw dq'd against spacepigeon
 """
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import csv
 import json
 import requests
 import os
 from datetime import datetime
-import logging
 import shelve
-from sqlitedict import SqliteDict
-import sys
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 from loguru import logger
 
 
-logger.remove()
-logger.add(sys.stdout, level="DEBUG")
-results_db = SqliteDict("db.sqlite", tablename="results", autocommit=True)
-
-logger = logging.getLogger(__name__)
-
 from collections import Counter, defaultdict
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "good-players.csv")
-JSON_DIR = os.path.join(os.path.dirname(__file__), "json")
+JSON_DIR = os.path.join(os.path.dirname(__file__), "..", "json")
 
 
 CUT_OFF_DATE_START = datetime(2022, 11, 1)
@@ -82,12 +74,12 @@ with open(CSV_PATH) as f:
         pgstats_links.append(row)
 
 
-players_badges = shelve.open("players.db")
+players_badges = shelve.open("players_badges.db")
 
 
 def get_or_set_player_badge_count(player_id: str) -> int:
     if player_id in players_badges:
-        logger.info(player_id, "in cache")
+        logger.debug(player_id, "in badge cache")
         return players_badges[player_id]
     else:
         data = requests.get(
@@ -110,20 +102,24 @@ def is_valid_tournament(tournament: dict) -> bool:
 
 
 def get_player_results(player_id: str) -> dict:
-    if player_id in results_db:
-        return results_db[player_id]
+    json_path = os.path.join(JSON_DIR, player_id + ".json")
+    if os.path.exists(json_path):
+        with open(json_path) as f:
+            return json.load(f)
     else:
         js = requests.get(id_to_url(player_id))
         results = js.json()["result"]
-        results_db[player_id] = results
+        with open(json_path, "w") as f:
+            json.dump(results, f)
         return results
 
 
 def refresh_db():
-    for key in results_db:
-        del results_db[key]
-    for key in players_badges:
-        del players_badges[key]
+    for file in os.listdir(JSON_DIR):
+        if file.endswith(".json"):
+            os.remove(os.path.join(JSON_DIR, file))
+    # for key in players_badges:
+    #     del players_badges[key]
     init_all_players_in_db()
 
 
@@ -142,7 +138,9 @@ def get_and_parse_player(api_url: str, player_id: str) -> None:
 
 
 def all_ids():
-    return results_db.keys()
+    for f in os.listdir(JSON_DIR):
+        if f.endswith(".json"):
+            yield f.split(".")[0]
 
 
 def parse_tournament(tournament: dict, player_id=None) -> None:

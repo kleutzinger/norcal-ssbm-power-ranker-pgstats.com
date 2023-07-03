@@ -20,6 +20,4 @@ for id in all_ids():
     print(id)
     # st.json(get_player_results(id))
     res = get_player_results(id)
-    st.json({"abc": 123})
     st.write(id)
-    break

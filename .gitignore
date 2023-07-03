@@ -159,3 +159,4 @@ players.db.dir
 
 json/*.json
 db.sqlite
+players_badges.db
