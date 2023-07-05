@@ -1,4 +1,5 @@
-from sqlalchemy import JSON, create_engine
+import datetime
+from sqlalchemy import JSON, Date, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from typing import Any
@@ -15,7 +16,7 @@ from sqlalchemy.orm import (
 SQLITE_DATABASE_URL = "sqlite:///./database.db"
 
 engine = create_engine(
-    SQLITE_DATABASE_URL, echo=True, connect_args={"check_same_thread": False}
+    SQLITE_DATABASE_URL, echo=False, connect_args={"check_same_thread": False}
 )
 Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -29,7 +30,7 @@ class Base(DeclarativeBase):
 class Player(Base):
     """
     This table is used to store the full information about a player.
-    This player will be included in the rankings.
+    This player will be considered for the ranking / data visualization.
     """
 
     __tablename__ = "players"
@@ -46,6 +47,7 @@ class Player(Base):
 class SmallPlayer(Base):
     """
     This table is used to store the bare minimum information about a player.
+    This collects data from the field of players who may or many not be ranked.
     """
 
     __tablename__ = "small_players"
@@ -66,11 +68,36 @@ class CombinePlayers(Base):
 
     __tablename__ = "combine_players"
     id: Mapped[int] = mapped_column(primary_key=True)
-    parent_id: Mapped[str] = mapped_column(String(20))
-    child_id: Mapped[str] = mapped_column(String(20), index=True, unique=True)
+    parent_pg_id: Mapped[str] = mapped_column(String(20))
+    child_pg_id: Mapped[str] = mapped_column(String(20), index=True, unique=True)
 
     def __repr__(self) -> str:
         return f"CombinePlayers(id={self.id!r}, parent_id={self.parent_id!r}, child_id={self.child_id!r})"
+
+
+class MeleeSet(Base):
+    __tablename__ = "melee_sets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pg_id: Mapped[str] = mapped_column(String(20), unique=True)
+    dq: Mapped[bool] = mapped_column()
+    p1_pg_id: Mapped[str] = mapped_column(String(20), index=True)
+    p2_pg_id: Mapped[str] = mapped_column(String(20), index=True)
+    winner_id: Mapped[str] = mapped_column(String(20))
+    tournament_pg_id: Mapped[str] = mapped_column(String(20), index=True)
+    start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Tournament(Base):
+    __tablename__ = "tournaments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pg_id: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    tournament_name: Mapped[str] = mapped_column(String(200))
+    start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
+    online: Mapped[bool] = mapped_column()
+    event_name: Mapped[str] = mapped_column(String(200))
+    num_attendees: Mapped[int] = mapped_column()
 
 
 Base.metadata.create_all(engine)
