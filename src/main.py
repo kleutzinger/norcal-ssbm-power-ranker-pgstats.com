@@ -148,8 +148,8 @@ def get_and_parse_player(api_url: str, player_id: str) -> None:
             profile=profile,
             results=results,
         )
-        session.add(player)
     try:
+        session.add(player)
         session.commit()
     except IntegrityError:
         session.rollback()
@@ -280,7 +280,7 @@ def init_all_players_in_db():
         if player_id in COMBINE_LOOKUP:
             player_id = COMBINE_LOOKUP[player_id]
         get_and_parse_player(player_link, player_id)
-        logger.info("got player", player_name)
+        logger.info("got player " + player_name)
     show_results()
     write_wins_and_losses_to_csv()
     # badge_db.close()
