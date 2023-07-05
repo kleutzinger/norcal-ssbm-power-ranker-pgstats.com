@@ -13,6 +13,8 @@ import requests
 import os
 from datetime import datetime
 import shelve
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 
 from loguru import logger
@@ -101,6 +103,17 @@ def is_valid_tournament(tournament: dict) -> bool:
     return True
 
 
+def get_player_profile(player_id: str) -> dict:
+    data = requests.get(
+        f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
+    ).json()
+    result = data["result"]
+    result["num_badges"] = len(result["badges"]["by_events"])
+    del result["badges"]
+    del result["placings"]
+    return result
+
+
 def get_player_results(player_id: str) -> dict:
     json_path = os.path.join(JSON_DIR, player_id + ".json")
     if os.path.exists(json_path):
@@ -125,6 +138,21 @@ def refresh_db():
 
 def get_and_parse_player(api_url: str, player_id: str) -> None:
     results = get_player_results(player_id)
+    profile = get_player_profile(player_id)
+    from database import SessionLocal, Player, engine
+
+    with Session(engine) as session:
+        player = Player(
+            pg_id=player_id,
+            tag=profile["tag"],
+            profile=profile,
+            results=results,
+        )
+        session.add(player)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
 
     for tournament_id, tournament_data in results.items():
         if not is_valid_tournament(tournament_data):
@@ -243,6 +271,8 @@ def write_wins_and_losses_to_csv():
 
 
 def init_all_players_in_db():
+    # create db session
+
     for link in pgstats_links:
         player_name = link[0]
         logger.debug("parsing, player_name=", player_name)
