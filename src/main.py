@@ -13,8 +13,9 @@ import requests
 import os
 from datetime import datetime
 import shelve
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+
+from database import Session, Player, SmallPlayer
 
 
 from loguru import logger
@@ -139,9 +140,8 @@ def refresh_db():
 def get_and_parse_player(api_url: str, player_id: str) -> None:
     results = get_player_results(player_id)
     profile = get_player_profile(player_id)
-    from database import SessionLocal, Player, engine
 
-    with Session(engine) as session:
+    with Session() as session:
         player = Player(
             pg_id=player_id,
             tag=profile["tag"],
