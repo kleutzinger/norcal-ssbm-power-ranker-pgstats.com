@@ -159,3 +159,4 @@ json/*.json
 *.bak
 *.dat
 *.dir
+*-journal

@@ -3,6 +3,7 @@ todo: what about DQs?
     nmw dq'd against spacepigeon
 """
 
+from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,7 +16,7 @@ from datetime import datetime
 import shelve
 from sqlalchemy.exc import IntegrityError
 
-from database import Session, Player, SmallPlayer
+from database import MeleeSet, Session, Player, SmallPlayer, Tournament
 
 
 from loguru import logger
@@ -137,16 +138,46 @@ def refresh_db():
     init_all_players_in_db()
 
 
+def rewrite_ids(set_data):
+    for key in ["p1_id", "p2_id", "winner_id"]:
+        if set_data[key] in COMBINE_LOOKUP:
+            set_data[key] = COMBINE_LOOKUP[set_data[key]]
+    return set_data
+
+
+def add_small_player(player_id: str, profile: Optional[dict] = None):
+    with Session() as session:
+        # check if player already exists
+        if session.query(
+            session.query(SmallPlayer).filter_by(pid=player_id).exists()
+        ).scalar():
+            return
+        if not profile:
+            profile = get_player_profile(player_id)
+        session.add(
+            SmallPlayer(
+                pid=player_id,
+                tag=profile["tag"],
+                badge_count=profile["num_badges"],
+                num_top8s=profile["top_8s"] or 0,
+                has_been_norcal_pr=None,
+            )
+        )
+        session.commit()
+        logger.info(f"added {profile['tag']} {player_id}")
+
+
 def get_and_parse_player(api_url: str, player_id: str) -> None:
     results = get_player_results(player_id)
     profile = get_player_profile(player_id)
 
+    add_small_player(player_id, profile)
+
     with Session() as session:
         player = Player(
-            pg_id=player_id,
+            pid=player_id,
             tag=profile["tag"],
             profile=profile,
-            results=results,
         )
     try:
         session.add(player)
@@ -155,14 +186,69 @@ def get_and_parse_player(api_url: str, player_id: str) -> None:
         session.rollback()
 
     for tournament_id, tournament_data in results.items():
-        if not is_valid_tournament(tournament_data):
-            logger.debug(
-                "skipping tournament" + tournament_data["info"]["tournament_name"]
-            )
-            continue
-        logger.debug("reading " + tournament_data["info"]["tournament_name"])
-        ID_TO_NUM_TOURNAMENTS[player_id] += 1
-        parse_tournament(tournament_data, player_id)
+        info = tournament_data["info"]
+        with Session() as session:
+            if session.query(
+                session.query(Tournament).filter_by(pid=tournament_id).exists()
+            ).scalar():
+                logger.error("tournament EXISTS! " + tournament_id)
+            else:
+                start_time = datetime.strptime(info["start_time"], "%Y-%m-%dT%H:%M:%S")
+                session.add(
+                    Tournament(
+                        pid=tournament_id,
+                        tournament_name=info["tournament_name"],
+                        start_time=start_time,
+                        online=info["online"],
+                        event_name=info["event_name"],
+                        num_attendees=info["attendees"],
+                    )
+                )
+                session.commit()
+
+        sets = tournament_data["sets"]
+        for set_data in sets:
+            set_id = set_data["id"]
+            set_data = rewrite_ids(set_data)
+            with Session() as session:
+                if session.query(
+                    session.query(MeleeSet).filter_by(pid=set_id).exists()
+                ).scalar():
+                    pass
+                    # logger.error("set EXISTS!, skipping " + set_id)
+                else:
+                    start_time = datetime.strptime(
+                        info["start_time"], "%Y-%m-%dT%H:%M:%S"
+                    )
+                    loser_id = (
+                        set([set_data["p1_id"], set_data["p2_id"]])
+                        - set([set_data["winner_id"]])
+                    ).pop()
+                    session.add(
+                        MeleeSet(
+                            pid=set_id,
+                            dq=bool(set_data["dq"]),
+                            winner_pid=set_data["winner_id"],
+                            loser_pid=loser_id,
+                            tournament_pid=tournament_id,
+                            start_time=start_time,
+                        )
+                    )
+                    session.commit()
+                    if set_data["winner_id"] != player_id:
+                        add_small_player(set_data["winner_id"])
+                    if loser_id != player_id:
+                        add_small_player(loser_id)
+
+    # for tournament_id, tournament_data in results.items():
+    #     if not is_valid_tournament(tournament_data):
+    #         logger.debug(
+    #             "skipping tournament" + tournament_data["info"]["tournament_name"]
+    #         )
+    #         continue
+    #     logger.debug("reading " + tournament_data["info"]["tournament_name"])
+    #     ID_TO_NUM_TOURNAMENTS[player_id] += 1
+    #     parse_tournament(tournament_data, player_id)
 
 
 def all_ids():
@@ -172,12 +258,6 @@ def all_ids():
 
 
 def parse_tournament(tournament: dict, player_id=None) -> None:
-    def rewrite_ids(set_data):
-        for key in ["p1_id", "p2_id", "winner_id"]:
-            if set_data[key] in COMBINE_LOOKUP:
-                set_data[key] = COMBINE_LOOKUP[set_data[key]]
-        return set_data
-
     # collect all wins and losses
     for set_data in tournament["sets"]:
         # data = dict(p1_tag=set_data["p1_tag"], p2_tag=set_data["p2_tag"])
@@ -275,7 +355,7 @@ def init_all_players_in_db():
 
     for link in pgstats_links:
         player_name = link[0]
-        logger.debug("parsing, player_name=", player_name)
+        logger.debug("parsing, player_name=" + player_name)
         player_id, player_link = pg_url_to_id_url(link[1])
         if player_id in COMBINE_LOOKUP:
             player_id = COMBINE_LOOKUP[player_id]

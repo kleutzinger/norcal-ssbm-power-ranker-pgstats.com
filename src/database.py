@@ -30,13 +30,12 @@ class Player(Base):
 
     __tablename__ = "players"
     id: Mapped[int] = mapped_column(primary_key=True)
-    pg_id: Mapped[str] = mapped_column(String(20), index=True, unique=True)
+    pid: Mapped[str] = mapped_column(String(20), index=True, unique=True)
     tag: Mapped[str] = mapped_column(String(100))
     profile: Mapped[dict[str, Any]] = mapped_column()
-    results: Mapped[dict[str, Any]] = mapped_column()
 
     def __repr__(self) -> str:
-        return f"Player(id={self.id!r}, tag={self.tag!r}, pg_id={self.pg_id!r})"
+        return f"Player(id={self.id!r}, tag={self.tag!r}, pid={self.pid!r})"
 
 
 class SmallPlayer(Base):
@@ -47,13 +46,14 @@ class SmallPlayer(Base):
 
     __tablename__ = "small_players"
     id: Mapped[int] = mapped_column(primary_key=True)
-    pg_id: Mapped[str] = mapped_column(String(20), index=True, unique=True)
+    pid: Mapped[str] = mapped_column(String(20), index=True, unique=True)
     tag: Mapped[str] = mapped_column(String(100))
     badge_count: Mapped[int] = mapped_column()
+    num_top8s: Mapped[int] = mapped_column()
     has_been_norcal_pr: Mapped[bool | None] = mapped_column()
 
     def __repr__(self) -> str:
-        return f"SmallPlayer(id={self.id!r}, tag={self.tag!r}, pg_id={self.pg_id!r}, badge_count={self.badge_count!r})"
+        return f"SmallPlayer(id={self.id!r}, tag={self.tag!r}, pid={self.pid!r}, badge_count={self.badge_count!r})"
 
 
 class CombinePlayers(Base):
@@ -63,8 +63,8 @@ class CombinePlayers(Base):
 
     __tablename__ = "combine_players"
     id: Mapped[int] = mapped_column(primary_key=True)
-    parent_pg_id: Mapped[str] = mapped_column(String(20))
-    child_pg_id: Mapped[str] = mapped_column(String(20), index=True, unique=True)
+    parent_pid: Mapped[str] = mapped_column(String(20))
+    child_pid: Mapped[str] = mapped_column(String(20), index=True, unique=True)
 
     def __repr__(self) -> str:
         return f"CombinePlayers(id={self.id!r}, parent_id={self.parent_id!r}, child_id={self.child_id!r})"
@@ -74,12 +74,11 @@ class MeleeSet(Base):
     __tablename__ = "melee_sets"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    pg_id: Mapped[str] = mapped_column(String(20), unique=True)
+    pid: Mapped[str] = mapped_column(String(20), unique=True)
     dq: Mapped[bool] = mapped_column()
-    p1_pg_id: Mapped[str] = mapped_column(String(20), index=True)
-    p2_pg_id: Mapped[str] = mapped_column(String(20), index=True)
-    winner_id: Mapped[str] = mapped_column(String(20))
-    tournament_pg_id: Mapped[str] = mapped_column(String(20), index=True)
+    winner_pid: Mapped[str] = mapped_column(String(20), index=True)
+    loser_pid: Mapped[str] = mapped_column(String(20), index=True)
+    tournament_pid: Mapped[str] = mapped_column(String(20), index=True)
     start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -87,7 +86,7 @@ class Tournament(Base):
     __tablename__ = "tournaments"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    pg_id: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    pid: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     tournament_name: Mapped[str] = mapped_column(String(200))
     start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
     online: Mapped[bool] = mapped_column()
