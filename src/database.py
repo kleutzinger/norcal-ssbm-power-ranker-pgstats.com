@@ -1,6 +1,5 @@
 import datetime
 from sqlalchemy import JSON, Date, DateTime, create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from typing import Any
 from sqlalchemy import String
@@ -8,8 +7,6 @@ from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
     mapped_column,
-    relationship,
-    relationship,
 )
 
 
@@ -19,8 +16,6 @@ engine = create_engine(
     SQLITE_DATABASE_URL, echo=False, connect_args={"check_same_thread": False}
 )
 Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
 
 
 class Base(DeclarativeBase):

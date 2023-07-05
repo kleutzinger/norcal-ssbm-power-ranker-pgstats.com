@@ -23,3 +23,13 @@ If a tournament is missing from pgstats, you can request it to be added here: [d
 ## Other Notes
 
 This is a quick and dirty script. Could be improved in a number of ways (see github issues)
+
+## Todo:
+
+- [ ] rewrite combined player ids when adding sets to the database
+- [ ] use sqlite for everything
+- [ ] move models to their own file (?)
+- [ ] display sqlite data in streamlit as a table
+- [ ] trim down player model by removing results data (keep the profile data, though (maybe rename to metadata))
+- [ ] run data analysis on the data as sqlite
+- [ ] deploy something to dokku
