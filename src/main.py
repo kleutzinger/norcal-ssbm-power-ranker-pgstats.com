@@ -191,8 +191,9 @@ def get_and_parse_player(api_url: str, player_id: str) -> None:
             if session.query(
                 session.query(Tournament).filter_by(pid=tournament_id).exists()
             ).scalar():
-                logger.error("tournament EXISTS! " + tournament_id)
+                pass
             else:
+                logger.info(f"adding tournament {info['tournament_name']}")
                 start_time = datetime.strptime(info["start_time"], "%Y-%m-%dT%H:%M:%S")
                 session.add(
                     Tournament(
