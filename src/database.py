@@ -7,6 +7,7 @@ from sqlmodel import (
     select,
 )
 import datetime
+from sqlalchemy.orm import aliased
 
 
 class Player(SQLModel, table=True):
@@ -95,13 +96,15 @@ def create_players():
         session.refresh(kev)
         session.refresh(tournament)
         player = session.get(Player, kev.id)
-        for set_, trny, opponent in session.exec(
-            select(MeleeSet, Tournament, Player)
+        LP = aliased(Player, name="loser")
+        WP = aliased(Player, name="winner")
+        for set_, trny, winner, loser in session.exec(
+            select(MeleeSet, Tournament, LP, WP)
             .join(Tournament, Tournament.id == MeleeSet.tournament_id)
-            .join(Player, Player.id == MeleeSet.loser_id)
+            .join(Player, LP.id == MeleeSet.loser_id)
+            .join(Player, WP.id == MeleeSet.winner_id)
         ).all():
-            # print(trny, opponent, set_)
-            print(opponent)
+            print(loser, "|||||||||||", winner)
         breakpoint()
 
 
