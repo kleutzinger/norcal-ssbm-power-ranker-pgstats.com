@@ -1,4 +1,5 @@
 loguru
-sqlalchemy
 python-dotenv
 streamlit
+sqlmodel
+pycodestyle

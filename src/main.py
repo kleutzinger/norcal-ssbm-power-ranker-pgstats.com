@@ -117,16 +117,9 @@ def get_player_profile(player_id: str) -> dict:
 
 
 def get_player_results(player_id: str) -> dict:
-    json_path = os.path.join(JSON_DIR, player_id + ".json")
-    if os.path.exists(json_path):
-        with open(json_path) as f:
-            return json.load(f)
-    else:
-        js = requests.get(id_to_url(player_id))
-        results = js.json()["result"]
-        with open(json_path, "w") as f:
-            json.dump(results, f)
-        return results
+    js = requests.get(id_to_url(player_id))
+    results = js.json()["result"]
+    return results
 
 
 def refresh_db():
@@ -211,6 +204,14 @@ def get_and_parse_player(api_url: str, player_id: str) -> None:
         for set_data in sets:
             set_id = set_data["id"]
             set_data = rewrite_ids(set_data)
+            loser_id = (
+                set([set_data["p1_id"], set_data["p2_id"]])
+                - set([set_data["winner_id"]])
+            ).pop()
+            if set_data["winner_id"] != player_id:
+                add_small_player(set_data["winner_id"])
+            if loser_id != player_id:
+                add_small_player(loser_id)
             with Session() as session:
                 if session.query(
                     session.query(MeleeSet).filter_by(pid=set_id).exists()
@@ -221,10 +222,6 @@ def get_and_parse_player(api_url: str, player_id: str) -> None:
                     start_time = datetime.strptime(
                         info["start_time"], "%Y-%m-%dT%H:%M:%S"
                     )
-                    loser_id = (
-                        set([set_data["p1_id"], set_data["p2_id"]])
-                        - set([set_data["winner_id"]])
-                    ).pop()
                     session.add(
                         MeleeSet(
                             pid=set_id,
@@ -236,10 +233,6 @@ def get_and_parse_player(api_url: str, player_id: str) -> None:
                         )
                     )
                     session.commit()
-                    if set_data["winner_id"] != player_id:
-                        add_small_player(set_data["winner_id"])
-                    if loser_id != player_id:
-                        add_small_player(loser_id)
 
     # for tournament_id, tournament_data in results.items():
     #     if not is_valid_tournament(tournament_data):
