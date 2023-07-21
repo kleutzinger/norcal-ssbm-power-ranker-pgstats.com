@@ -1,6 +1,4 @@
 """
-todo: what about DQs?
-    nmw dq'd against spacepigeon
 """
 
 from typing import Optional
@@ -14,9 +12,8 @@ import requests
 import os
 from datetime import datetime
 import shelve
-from sqlalchemy.exc import IntegrityError
 
-from database import MeleeSet, Session, Player, SmallPlayer, Tournament
+from database import setj, getj, r
 
 
 from loguru import logger
@@ -164,19 +161,9 @@ def get_and_parse_player(api_url: str, player_id: str) -> None:
     results = get_player_results(player_id)
     profile = get_player_profile(player_id)
 
-    add_small_player(player_id, profile)
-
-    with Session() as session:
-        player = Player(
-            pid=player_id,
-            tag=profile["tag"],
-            profile=profile,
-        )
-    try:
-        session.add(player)
-        session.commit()
-    except IntegrityError:
-        session.rollback()
+    setj(f"{player_id}:profile", profile)
+    setj(f"{player_id}:results", results)
+    return
 
     for tournament_id, tournament_data in results.items():
         info = tournament_data["info"]

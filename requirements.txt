@@ -85,6 +85,8 @@ pytz==2023.3
     # via pandas
 pytz-deprecation-shim==0.1.0.post0
     # via tzlocal
+redis==4.6.0
+    # via -r requirements.in
 requests==2.31.0
     # via streamlit
 rich==13.4.2
