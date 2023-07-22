@@ -4,3 +4,5 @@ streamlit
 sqlmodel
 pycodestyle
 redis
+gspread
+gspread-formatting

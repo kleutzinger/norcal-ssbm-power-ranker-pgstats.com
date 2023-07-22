@@ -5,9 +5,15 @@ import os
 
 from main import pg_url_to_id_url
 from scrape import get_or_set_player_badge_count, get_player_list
+import gspread
 from database import getj
 
 from loguru import logger
+
+gc = gspread.service_account()
+
+# Open a sheet from a spreadsheet in one go
+worksheet = gc.open("test-gspread").sheet1
 
 
 CUT_OFF_DATE_START = datetime(2023, 5, 8)
@@ -110,7 +116,7 @@ def get_h2h_str(player_id, opponent_id) -> str:
     return f"{wins}-{losses}"
 
 
-def write_wins_and_losses_to_csv():
+def write_wins_and_losses_to_sheet():
     def leftmost_colum_gen(player_id) -> str:
         # get total number of wins for a player
         w = sum(PLAYER_TO_WINS[player_id].values())
@@ -122,23 +128,25 @@ def write_wins_and_losses_to_csv():
     def wins_losses_to_string(player_id, sets) -> str:
         for opponent_id, count in sorted(
             sets.items(),
-            # key=lambda x: players_badges[x[0]],
+            key=lambda x: get_or_set_player_badge_count(x[0]),
             reverse=True,
         ):
             yield f"{ID_TO_NAME[opponent_id]} ({get_h2h_str(player_id, opponent_id)})"
 
+    win_array_2d = []
     with open("wins.csv", "w", newline="") as f:
-        for player_id, losses in sorted(
+        for player_id, wins in sorted(
             PLAYER_TO_WINS.items(),
-            # key=lambda x: players_badges[x[0]],
+            key=lambda x: get_or_set_player_badge_count(x[0]),
             reverse=True,
         ):
-            f.write(
-                leftmost_colum_gen(player_id)
-                + ","
-                + ", ".join(list(wins_losses_to_string(player_id, losses)))
-                + "\n"
+            cur = [leftmost_colum_gen(player_id)] + list(
+                wins_losses_to_string(player_id, wins)
             )
+            win_array_2d.append(cur)
+        worksheet.clear()
+        worksheet.update("A1", win_array_2d)
+        return
 
     with open("losses.csv", "w", newline="") as f:
         for player_id, losses in sorted(
@@ -169,21 +177,7 @@ def parse_good_player(player_id: str) -> None:
 
         ID_TO_NUM_TOURNAMENTS[player_id] += 1
         start_time = datetime.strptime(info["start_time"], "%Y-%m-%dT%H:%M:%S")
-
-        sets = tournament_data["sets"]
-        for set_data in sets:
-            set_id = set_data["id"]
-            set_data = rewrite_ids(set_data)
-            loser_id = (
-                set([set_data["p1_id"], set_data["p2_id"]])
-                - set([set_data["winner_id"]])
-            ).pop()
-            if set_data["winner_id"] != player_id:
-                pass
-                # add_small_player(set_data["winner_id"])
-            if loser_id != player_id:
-                pass
-            start_time = datetime.strptime(info["start_time"], "%Y-%m-%dT%H:%M:%S")
+        parse_tournament(tournament_data, player_id)
 
 
 def main():
@@ -195,7 +189,7 @@ def main():
         parse_good_player(player_id)
         logger.info("got player " + player_name)
     show_results()
-    write_wins_and_losses_to_csv()
+    write_wins_and_losses_to_sheet()
     # badge_db.close()
 
 
