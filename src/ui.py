@@ -1,6 +1,6 @@
 # make a streamlit site
 import streamlit as st
-from main import refresh_db, all_ids, get_player_results
+from common import refresh_db, all_ids, get_player_results
 
 input_player = st.text_input(
     "input player", "https://www.pgstats.com/melee/player/Kevbot?id=S12293"

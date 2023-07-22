@@ -1,7 +1,7 @@
 from collections import Counter, defaultdict
 from datetime import datetime
 
-from main import pg_url_to_id_url
+from common import url_to_id
 from scrape import (
     get_or_set_player_badge_count,
     get_player_list,
@@ -14,10 +14,11 @@ from loguru import logger
 
 gc = gspread.service_account()
 
-# init worksheets
+logger.info("creating sheets if nonexistent")
 for sheet_name in ["wins", "losses", "h2h"]:
     try:
         gc.open("test-gspread").add_worksheet(title=sheet_name, rows=100, cols=20)
+        logger.info(f"created sheet {sheet_name}")
     except gspread.exceptions.APIError:
         pass
 
@@ -183,7 +184,7 @@ def parse_good_player(player_id: str) -> None:
 def main():
     for player_name, player_url in get_player_list():
         logger.debug("parsing, player_name=" + player_name)
-        player_id, player_link = pg_url_to_id_url(player_url)
+        player_id = url_to_id(player_url)
         if player_id in COMBINE_LOOKUP:
             player_id = COMBINE_LOOKUP[player_id]
         parse_good_player(player_id)

@@ -7,7 +7,7 @@ import click
 import requests
 from loguru import logger
 from database import r, setj
-from main import id_to_url, pg_url_to_id_url, url_to_id
+from common import id_to_url, url_to_id
 
 
 SHEET_ID = "1EQmk2ElCjlC6LiYrmqBcjxpAHL49PTgJRuOwcY1MlPY"
