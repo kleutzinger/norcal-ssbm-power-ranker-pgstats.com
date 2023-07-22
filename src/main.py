@@ -32,6 +32,10 @@ def id_to_url(player_id: str) -> str:
     return f"https://api.pgstats.com/players/data?playerId={player_id}&game=melee"
 
 
+def url_to_id(player_id: str) -> str:
+    return player_id.split("?id=")[1]
+
+
 with open(CSV_PATH) as f:
     f_csv = csv.reader(f)
     headers = next(f_csv)

@@ -1,8 +1,9 @@
 loguru
 python-dotenv
 streamlit
-sqlmodel
 pycodestyle
 redis
 gspread
 gspread-formatting
+click
+

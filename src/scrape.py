@@ -1,8 +1,13 @@
 import csv
+from datetime import timedelta
 from io import StringIO
+import time
+from typing import Optional
+import click
 import requests
+from loguru import logger
 from database import r, setj
-from main import id_to_url, pg_url_to_id_url
+from main import id_to_url, pg_url_to_id_url, url_to_id
 
 
 SHEET_ID = "1EQmk2ElCjlC6LiYrmqBcjxpAHL49PTgJRuOwcY1MlPY"
@@ -16,6 +21,38 @@ def get_sheet_dl(gid: str) -> str:
     return (
         f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={gid}"
     )
+
+
+def fetch_url_with_retry(
+    url,
+    max_retries=5,
+    request_timeout=10,
+    retry_timeout=3,
+) -> Optional[requests.Response]:
+    """
+    Fetch the content of a URL using the requests library with retry.
+
+    Parameters:
+        url (str): The URL to fetch the content from.
+        max_retries (int, optional): The maximum number of retry attempts. Default is 5.
+        request_timeout (int, optional): The timeout for the request in seconds. Default is 10.
+        retry_timeout (int, optional): The timeout in seconds between retry attempts. Default is 3.
+
+    Returns:
+        str: The content of the URL if successfully fetched, or None if all retry attempts failed.
+    """
+    for retry in range(max_retries + 1):
+        try:
+            response = requests.get(url, timeout=request_timeout)
+            response.raise_for_status()  # Raise an exception for non-200 status codes
+            return response
+        except (requests.RequestException, requests.HTTPError, requests.Timeout) as e:
+            logger.info(f"Attempt {retry + 1}/{max_retries + 1} failed. Error: {e}")
+            if retry < max_retries:
+                logger.info(f"Retrying in {retry_timeout} seconds...")
+                time.sleep(retry_timeout)
+
+    return None  # Return None if all retry attempts fail
 
 
 def get_csv(csv_dl) -> list:
@@ -39,11 +76,22 @@ def get_player_list(include_duplicates: bool = True) -> list:
     return rows[1:]
 
 
+def get_duplicate_dict_from_sheet() -> dict:
+    dl_link = get_sheet_dl(COMBINE_GID)
+    duplicate_table = dict()
+    rows = get_player_list()
+    last_valid_id = ""
+    for tag, url in rows[1:]:
+        if tag == "^":
+            duplicate_table[url_to_id(url)] = last_valid_id
+        else:
+            last_valid_id = url_to_id(url)
+    return duplicate_table
+
+
 def get_and_parse_player(player_id: str) -> None:
     profile_key = f"{player_id}:profile"
     results_key = f"{player_id}:results"
-    # if r.exists(profile_key) and r.exists(results_key):
-    #     return
     results = fetch_player_results(player_id)
     profile = fetch_player_profile(player_id)
 
@@ -52,26 +100,30 @@ def get_and_parse_player(player_id: str) -> None:
 
 
 def fetch_player_profile(player_id: str) -> dict:
-    data = requests.get(
+    data = fetch_url_with_retry(
         f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
     ).json()
-    result = data["result"]
-    result["num_badges"] = len(result["badges"]["by_events"])
-    del result["badges"]
-    del result["placings"]
-    return result
+    profile = data["result"]
+    profile["num_badges"] = len(profile["badges"]["by_events"])
+    del profile["badges"]
+    del profile["placings"]
+    return profile
 
 
 def fetch_player_results(player_id: str) -> dict:
-    js = requests.get(id_to_url(player_id))
-    results = js.json()["result"]
+    data = fetch_url_with_retry(id_to_url(player_id))
+    results = data.json()["result"]
     return results
 
 
-def scrape_all_players():
+def scrape_all_players(skip_known: bool = False):
     for tag, pg_url in get_player_list():
-        print(tag)
-        get_and_parse_player(pg_url_to_id_url(pg_url)[0])
+        player_id = url_to_id(pg_url)
+        if skip_known and r.exists(f"{player_id}:results"):
+            logger.info(f"skipping {tag}")
+            continue
+        logger.info(f"scraping {tag}, {pg_url}")
+        get_and_parse_player(player_id)
 
 
 def get_or_set_player_badge_count(player_id: str) -> int:
@@ -79,16 +131,19 @@ def get_or_set_player_badge_count(player_id: str) -> int:
     in_db = r.get(badge_key)
     if in_db is not None:
         return int(in_db)
-    data = requests.get(
+    data = fetch_url_with_retry(
         f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
     ).json()
     num_badges = len(data["result"]["badges"]["by_events"])
-    r.set(badge_key, num_badges)
+    r.set(badge_key, num_badges, ex=timedelta(weeks=4))
     return num_badges
 
 
-def main():
-    scrape_all_players()
+@click.command()
+@click.option("--skip", is_flag=True, default=False, help="skip players already in db")
+def main(skip):
+    scrape_all_players(skip_known=skip)
+    """Simple program that greets NAME for a total of COUNT times."""
 
 
 if __name__ == "__main__":

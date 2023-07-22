@@ -1,10 +1,12 @@
 from collections import Counter, defaultdict
 from datetime import datetime
-import json
-import os
 
 from main import pg_url_to_id_url
-from scrape import get_or_set_player_badge_count, get_player_list
+from scrape import (
+    get_or_set_player_badge_count,
+    get_player_list,
+    get_duplicate_dict_from_sheet,
+)
 import gspread
 from database import getj
 
@@ -12,8 +14,17 @@ from loguru import logger
 
 gc = gspread.service_account()
 
+# init worksheets
+for sheet_name in ["wins", "losses", "h2h"]:
+    try:
+        gc.open("test-gspread").add_worksheet(title=sheet_name, rows=100, cols=20)
+    except gspread.exceptions.APIError:
+        pass
+
 # Open a sheet from a spreadsheet in one go
-worksheet = gc.open("test-gspread").sheet1
+wins_sheet = gc.open("test-gspread").worksheet("wins")
+losses_sheet = gc.open("test-gspread").worksheet("losses")
+h2h_sheet = gc.open("test-gspread").worksheet("h2h")
 
 
 CUT_OFF_DATE_START = datetime(2023, 5, 8)
@@ -33,18 +44,7 @@ def add_tag(player_id: str, tag: str):
     ID_TO_NAME[player_id] = tag
 
 
-COMBINE_JSON = os.path.join(os.path.dirname(__file__), "combine_players.json")
-with open(COMBINE_JSON) as f:
-    combine_players = json.load(f)
-
-
-COMBINE_LOOKUP = {}
-for player_name, player_ids in combine_players.items():
-    for player_id in player_ids:
-        # combine duplicate players to the first player_id
-        COMBINE_LOOKUP[pg_url_to_id_url(player_id)[0]] = pg_url_to_id_url(
-            player_ids[0]
-        )[0]
+COMBINE_LOOKUP = get_duplicate_dict_from_sheet()
 
 
 def is_valid_tournament(
@@ -133,33 +133,33 @@ def write_wins_and_losses_to_sheet():
         ):
             yield f"{ID_TO_NAME[opponent_id]} ({get_h2h_str(player_id, opponent_id)})"
 
-    win_array_2d = []
-    with open("wins.csv", "w", newline="") as f:
-        for player_id, wins in sorted(
-            PLAYER_TO_WINS.items(),
-            key=lambda x: get_or_set_player_badge_count(x[0]),
-            reverse=True,
-        ):
-            cur = [leftmost_colum_gen(player_id)] + list(
-                wins_losses_to_string(player_id, wins)
-            )
-            win_array_2d.append(cur)
-        worksheet.clear()
-        worksheet.update("A1", win_array_2d)
-        return
+    res_array_2d = []
+    # WINS
+    for player_id, wins in sorted(
+        PLAYER_TO_WINS.items(),
+        key=lambda x: get_or_set_player_badge_count(x[0]),
+        reverse=True,
+    ):
+        cur = [leftmost_colum_gen(player_id)] + list(
+            wins_losses_to_string(player_id, wins)
+        )
+        res_array_2d.append(cur)
+    wins_sheet.clear()
+    wins_sheet.update("A1", res_array_2d)
 
-    with open("losses.csv", "w", newline="") as f:
-        for player_id, losses in sorted(
-            PLAYER_TO_LOSSES.items(),
-            # key=lambda x: players_badges[x[0]],
-            reverse=True,
-        ):
-            f.write(
-                leftmost_colum_gen(player_id)
-                + ","
-                + ", ".join(reversed(list(wins_losses_to_string(player_id, losses))))
-                + "\n"
-            )
+    # LOSSES
+    res_array_2d = []
+    for player_id, losses in sorted(
+        PLAYER_TO_LOSSES.items(),
+        key=lambda x: get_or_set_player_badge_count(x[0]),
+        reverse=True,
+    ):
+        cur = [leftmost_colum_gen(player_id)] + list(
+            wins_losses_to_string(player_id, losses)
+        )
+        res_array_2d.append(cur)
+    losses_sheet.clear()
+    losses_sheet.update("A1", res_array_2d)
 
 
 def parse_good_player(player_id: str) -> None:
