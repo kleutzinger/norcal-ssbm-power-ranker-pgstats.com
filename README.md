@@ -27,9 +27,13 @@ This is a quick and dirty script. Could be improved in a number of ways (see git
 ## Todo:
 
 - [x] rewrite combined player ids when adding sets to the database
-- [x] use sqlite for everything
-- [ ] move models to their own file (?)
-- [ ] display sqlite data in streamlit as a table
+- [x] scrape player list from a google sheet
 - [x] trim down player model by removing results data (keep the profile data, though (maybe rename to metadata))
-- [ ] run data analysis on the data as sqlite
+- [x] write player data to redis
+- [ ] write badge data to redis
+  - [ ] read above
+- [ ] parse data to web ui
+- [ ] scrape on deploy
+- [ ] scrape on cron
+- [ ] scrape on request (button)
 - [ ] deploy something to dokku

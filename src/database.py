@@ -10,7 +10,6 @@ import json
 import gzip
 from io import BytesIO
 from typing import Optional
-from sqlalchemy.orm import aliased
 import redis
 
 
@@ -32,7 +31,6 @@ def decompressBytesToString(inputBytes):
             bio.seek(0)
             return bio.read().decode("utf-8")
         bio.write(chunk)
-    return None
 
 
 def compressStringToBytes(inputString):
@@ -54,7 +52,7 @@ def compressStringToBytes(inputString):
 
 
 def setj(key: str, value: dict) -> Optional[bool]:
-    """a wrapper around redis set that converts the value to json"""
+    """a wrapper around redis set that converts the value to compressed json"""
     return r.set(key, compressStringToBytes(json.dumps(value)))
 
 
