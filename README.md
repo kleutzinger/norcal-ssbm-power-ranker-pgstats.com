@@ -23,3 +23,17 @@ If a tournament is missing from pgstats, you can request it to be added here: [d
 ## Other Notes
 
 This is a quick and dirty script. Could be improved in a number of ways (see github issues)
+
+## Todo:
+
+- [x] rewrite combined player ids when adding sets to the database
+- [x] scrape player list from a google sheet
+- [x] trim down player model by removing results data (keep the profile data, though (maybe rename to metadata))
+- [x] write player data to redis
+- [x] write badge data to redis
+- [x] write data to google sheet
+- [ ] parse data to web ui
+- [ ] scrape on deploy
+- [ ] scrape on cron
+- [ ] scrape on request (button)
+- [ ] deploy something to dokku

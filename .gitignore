@@ -153,6 +153,10 @@ cython_debug/
 
 *.csv
 *.tsv
-players.db.bak
-players.db.dat
-players.db.dir
+json/*.json
+*.db
+*.sqlite
+*.bak
+*.dat
+*.dir
+*-journal

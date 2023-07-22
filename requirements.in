@@ -1,0 +1,9 @@
+loguru
+python-dotenv
+streamlit
+pycodestyle
+redis
+gspread
+gspread-formatting
+click
+
