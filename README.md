@@ -30,8 +30,8 @@ This is a quick and dirty script. Could be improved in a number of ways (see git
 - [x] scrape player list from a google sheet
 - [x] trim down player model by removing results data (keep the profile data, though (maybe rename to metadata))
 - [x] write player data to redis
-- [ ] write badge data to redis
-  - [ ] read above
+- [x] write badge data to redis
+- [x] write data to google sheet
 - [ ] parse data to web ui
 - [ ] scrape on deploy
 - [ ] scrape on cron
