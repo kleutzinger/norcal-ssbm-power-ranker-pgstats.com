@@ -21,7 +21,7 @@ for sheet_name in ["wins", "losses", "h2h"]:
         gc.open("test-gspread").add_worksheet(title=sheet_name, rows=100, cols=20)
         logger.info(f"created sheet {sheet_name}")
     except gspread.exceptions.APIError:
-        pass
+        logger.info(f"found sheet {sheet_name}")
 
 # Open a sheet from a spreadsheet in one go
 wins_sheet = gc.open("test-gspread").worksheet("wins")
@@ -71,8 +71,8 @@ def rewrite_ids(set_data):
 
 def parse_tournament(tournament: dict, player_id=None) -> None:
     # collect all wins and losses
+    ID_TO_NUM_TOURNAMENTS[player_id] += 1
     for set_data in tournament["sets"]:
-        # data = dict(p1_tag=set_data["p1_tag"], p2_tag=set_data["p2_tag"])
         if player_id in COMBINE_LOOKUP:
             player_id = COMBINE_LOOKUP[player_id]
         set_data = rewrite_ids(set_data)
@@ -102,16 +102,6 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
             logger.info(set_data)
 
 
-def show_results():
-    for player_id, wins in PLAYER_TO_WINS.items():
-        for win, count in wins.items():
-            print(ID_TO_NAME[win], count, end=",")
-    # losses:
-    for player_id, losses in PLAYER_TO_LOSSES.items():
-        for loss, count in losses.items():
-            print(ID_TO_NAME[loss], count, end=",")
-
-
 def get_h2h_str(player_id, opponent_id) -> str:
     wins = PLAYER_TO_WINS[player_id][opponent_id]
     losses = PLAYER_TO_LOSSES[player_id][opponent_id]
@@ -121,11 +111,11 @@ def get_h2h_str(player_id, opponent_id) -> str:
 def write_wins_and_losses_to_sheet():
     def leftmost_colum_gen(player_id) -> str:
         # get total number of wins for a player
-        w = sum(PLAYER_TO_WINS[player_id].values())
-        l = sum(PLAYER_TO_LOSSES[player_id].values())
-        tot = w + l
-        trny = ID_TO_NUM_TOURNAMENTS[player_id]
-        return f"{ID_TO_NAME[player_id]} ({tot}),{w}-{l} in {trny} "
+        win_count = sum(PLAYER_TO_WINS[player_id].values())
+        loss_count = sum(PLAYER_TO_LOSSES[player_id].values())
+        set_count = win_count + loss_count
+        trny_count = ID_TO_NUM_TOURNAMENTS[player_id]
+        return f"{ID_TO_NAME[player_id]} ({set_count}),{win_count}-{loss_count} in {trny_count} "
 
     def wins_losses_to_string(player_id, sets) -> str:
         for opponent_id, count in sorted(
@@ -177,7 +167,6 @@ def parse_good_player(player_id: str) -> None:
             continue
         logger.info(f"adding tournament {info['tournament_name']}")
 
-        ID_TO_NUM_TOURNAMENTS[player_id] += 1
         start_time = datetime.strptime(info["start_time"], "%Y-%m-%dT%H:%M:%S")
         parse_tournament(tournament_data, player_id)
 
@@ -186,11 +175,8 @@ def main():
     for player_name, player_url in get_player_list():
         logger.debug("parsing, player_name=" + player_name)
         player_id = url_to_id(player_url)
-        if player_id in COMBINE_LOOKUP:
-            player_id = COMBINE_LOOKUP[player_id]
         parse_good_player(player_id)
         logger.info("got player " + player_name)
-    show_results()
     write_wins_and_losses_to_sheet()
     # badge_db.close()
 

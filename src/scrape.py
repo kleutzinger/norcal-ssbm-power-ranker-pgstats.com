@@ -77,7 +77,6 @@ def get_player_list(include_duplicates: bool = True) -> list:
 
 
 def get_duplicate_dict_from_sheet() -> dict:
-    dl_link = get_sheet_dl(COMBINE_GID)
     duplicate_table = dict()
     rows = get_player_list()
     last_valid_id = ""
