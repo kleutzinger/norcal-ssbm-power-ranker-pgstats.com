@@ -160,3 +160,4 @@ json/*.json
 *.dat
 *.dir
 *-journal
+service_account.json

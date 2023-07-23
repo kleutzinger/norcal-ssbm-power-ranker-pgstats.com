@@ -9,10 +9,11 @@ from scrape import (
 )
 import gspread
 from database import getj
+from encryption import get_service_account_file_path
 
 from loguru import logger
 
-gc = gspread.service_account()
+gc = gspread.service_account(filename=get_service_account_file_path())
 
 logger.info("creating sheets if nonexistent")
 for sheet_name in ["wins", "losses", "h2h"]:

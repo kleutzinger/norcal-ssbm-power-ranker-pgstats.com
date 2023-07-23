@@ -1,7 +1,8 @@
 """
 todo:
-- [ ] import redis url from env
+- [x] import redis url from env
 """
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,8 +13,12 @@ from io import BytesIO
 from typing import Optional
 import redis
 
-
-r = redis.Redis(host="localhost", port=6379, db=0)
+REDIS_URL = os.getenv("REDIS_URL")
+if REDIS_URL is None:
+    # use default local redis
+    r = redis.Redis(host="localhost", port=6379, db=0)
+else:
+    r = redis.Redis.from_url(REDIS_URL, db=0)
 
 
 def decompressBytesToString(inputBytes):

@@ -6,4 +6,4 @@ redis
 gspread
 gspread-formatting
 click
-
+pyAesCrypt
