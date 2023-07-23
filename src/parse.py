@@ -16,7 +16,7 @@ from loguru import logger
 gc = gspread.service_account(filename=get_service_account_file_path())
 
 logger.info("creating sheets if nonexistent")
-for sheet_name in ["wins", "losses", "h2h"]:
+for sheet_name in ["wins", "losses", "h2h", "meta"]:
     try:
         gc.open("test-gspread").add_worksheet(title=sheet_name, rows=100, cols=20)
         logger.info(f"created sheet {sheet_name}")
@@ -27,6 +27,7 @@ for sheet_name in ["wins", "losses", "h2h"]:
 wins_sheet = gc.open("test-gspread").worksheet("wins")
 losses_sheet = gc.open("test-gspread").worksheet("losses")
 h2h_sheet = gc.open("test-gspread").worksheet("h2h")
+meta_sheet = gc.open("test-gspread").worksheet("meta")
 
 
 CUT_OFF_DATE_START = datetime(2023, 5, 8)
@@ -152,6 +153,7 @@ def write_wins_and_losses_to_sheet():
         res_array_2d.append(cur)
     losses_sheet.clear()
     losses_sheet.update("A1", res_array_2d)
+    meta_sheet.update("A1", [[f"last updated {datetime.now()}"]])
 
 
 def parse_good_player(player_id: str) -> None:

@@ -3,5 +3,11 @@
     "dokku": {
       "postdeploy": "cd /app && ./run.sh"
     }
-  }
+  },
+  "cron": [
+    {
+      "command": "sh run.sh",
+      "schedule": "0 */1 * * *"
+    }
+  ]
 }
