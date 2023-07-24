@@ -7,3 +7,4 @@ gspread
 gspread-formatting
 click
 pyAesCrypt
+pytz

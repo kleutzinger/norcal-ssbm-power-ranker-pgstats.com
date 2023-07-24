@@ -1,6 +1,8 @@
 from collections import Counter, defaultdict
 from datetime import datetime
 
+from pytz import timezone
+
 from common import url_to_id
 from scrape import (
     get_or_set_player_badge_count,
@@ -15,19 +17,22 @@ from loguru import logger
 
 gc = gspread.service_account(filename=get_service_account_file_path())
 
+# TODO: don't hardcode the sheet name value
 logger.info("creating sheets if nonexistent")
 for sheet_name in ["wins", "losses", "h2h", "meta"]:
     try:
-        gc.open("test-gspread").add_worksheet(title=sheet_name, rows=100, cols=20)
+        gc.open("Norcal PR Summer 2023").add_worksheet(
+            title=sheet_name, rows=100, cols=20
+        )
         logger.info(f"created sheet {sheet_name}")
     except gspread.exceptions.APIError:
         logger.info(f"found sheet {sheet_name}")
 
 # Open a sheet from a spreadsheet in one go
-wins_sheet = gc.open("test-gspread").worksheet("wins")
-losses_sheet = gc.open("test-gspread").worksheet("losses")
-h2h_sheet = gc.open("test-gspread").worksheet("h2h")
-meta_sheet = gc.open("test-gspread").worksheet("meta")
+wins_sheet = gc.open("Norcal PR Summer 2023").worksheet("wins")
+losses_sheet = gc.open("Norcal PR Summer 2023").worksheet("losses")
+h2h_sheet = gc.open("Norcal PR Summer 2023").worksheet("h2h")
+meta_sheet = gc.open("Norcal PR Summer 2023").worksheet("meta")
 
 
 CUT_OFF_DATE_START = datetime(2023, 5, 8)
@@ -153,7 +158,10 @@ def write_wins_and_losses_to_sheet():
         res_array_2d.append(cur)
     losses_sheet.clear()
     losses_sheet.update("A1", res_array_2d)
-    meta_sheet.update("A1", [[f"last updated {datetime.now()}"]])
+    # write time to meta sheet
+    sa_time = datetime.now(timezone("America/Los_Angeles"))
+    updated_time = sa_time.strftime("%Y-%m-%d %I:%M %p")
+    meta_sheet.update("A1", [[f"last updated {updated_time}"]])
 
 
 def parse_good_player(player_id: str) -> None:
@@ -180,7 +188,6 @@ def main():
         parse_good_player(player_id)
         logger.info("got player " + player_name)
     write_wins_and_losses_to_sheet()
-    # badge_db.close()
 
 
 if __name__ == "__main__":
