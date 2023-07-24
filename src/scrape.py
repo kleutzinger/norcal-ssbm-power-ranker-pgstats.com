@@ -12,6 +12,9 @@ from common import id_to_url, url_to_id
 
 SHEET_ID = "1EQmk2ElCjlC6LiYrmqBcjxpAHL49PTgJRuOwcY1MlPY"
 PLAYERS_GID = "0"
+INPUT_SHEET_LINK = (
+    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit#gid={PLAYERS_GID}"
+)
 COMBINE_GID = "1516543032"
 PERIODS_GID = "841098674"
 HISTORICALLY_RANKED_GID = "1016791450"
@@ -68,7 +71,7 @@ def get_csv(csv_dl) -> list:
     return rows
 
 
-def get_player_list(include_duplicates: bool = True) -> list:
+def get_player_tags_urls_list(include_duplicates: bool = True) -> list[tuple[str, str]]:
     dl_link = get_sheet_dl(PLAYERS_GID)
     rows = get_csv(dl_link)
     if not include_duplicates:
@@ -78,7 +81,7 @@ def get_player_list(include_duplicates: bool = True) -> list:
 
 def get_duplicate_dict_from_sheet() -> dict:
     duplicate_table = dict()
-    rows = get_player_list()
+    rows = get_player_tags_urls_list()
     last_valid_id = ""
     for tag, url in rows[1:]:
         if tag == "^":
@@ -116,7 +119,7 @@ def fetch_player_results(player_id: str) -> dict:
 
 
 def scrape_all_players(skip_known: bool = False):
-    for tag, pg_url in get_player_list():
+    for tag, pg_url in get_player_tags_urls_list():
         player_id = url_to_id(pg_url)
         if skip_known and r.exists(f"{player_id}:results"):
             logger.info(f"skipping {tag}")

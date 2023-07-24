@@ -6,33 +6,38 @@ from pytz import timezone
 from common import url_to_id
 from scrape import (
     get_or_set_player_badge_count,
-    get_player_list,
+    get_player_tags_urls_list,
     get_duplicate_dict_from_sheet,
 )
 import gspread
+from gspread_formatting import *
 from database import getj
 from encryption import get_service_account_file_path
 
+
 from loguru import logger
+
+# These are the sheets that we want to create if they don't exist
+DESIRED_SHEETS = ["wins", "losses", "h2h", "meta"]
 
 gc = gspread.service_account(filename=get_service_account_file_path())
 
 # TODO: don't hardcode the sheet name value
 logger.info("creating sheets if nonexistent")
-for sheet_name in ["wins", "losses", "h2h", "meta"]:
-    try:
-        gc.open("Norcal PR Summer 2023").add_worksheet(
-            title=sheet_name, rows=100, cols=20
-        )
+relevant_doc = gc.open("Norcal PR Summer 2023")
+present_titles = [w.title for w in relevant_doc.worksheets()]
+for sheet_name in DESIRED_SHEETS:
+    if sheet_name not in present_titles:
+        relevant_doc.add_worksheet(title=sheet_name, rows=100, cols=20)
         logger.info(f"created sheet {sheet_name}")
-    except gspread.exceptions.APIError:
+    else:
         logger.info(f"found sheet {sheet_name}")
 
 # Open a sheet from a spreadsheet in one go
-wins_sheet = gc.open("Norcal PR Summer 2023").worksheet("wins")
-losses_sheet = gc.open("Norcal PR Summer 2023").worksheet("losses")
-h2h_sheet = gc.open("Norcal PR Summer 2023").worksheet("h2h")
-meta_sheet = gc.open("Norcal PR Summer 2023").worksheet("meta")
+wins_sheet = relevant_doc.worksheet("wins")
+losses_sheet = relevant_doc.worksheet("losses")
+h2h_sheet = relevant_doc.worksheet("h2h")
+meta_sheet = relevant_doc.worksheet("meta")
 
 
 CUT_OFF_DATE_START = datetime(2023, 5, 8)
@@ -114,15 +119,15 @@ def get_h2h_str(player_id, opponent_id) -> str:
     return f"{wins}-{losses}"
 
 
-def write_wins_and_losses_to_sheet():
-    def leftmost_colum_gen(player_id) -> str:
-        # get total number of wins for a player
-        win_count = sum(PLAYER_TO_WINS[player_id].values())
-        loss_count = sum(PLAYER_TO_LOSSES[player_id].values())
-        set_count = win_count + loss_count
-        trny_count = ID_TO_NUM_TOURNAMENTS[player_id]
-        return f"{ID_TO_NAME[player_id]} ({set_count}),{win_count}-{loss_count} in {trny_count} "
+def leftmost_colum_gen(player_id) -> str:
+    win_count = sum(PLAYER_TO_WINS[player_id].values())
+    loss_count = sum(PLAYER_TO_LOSSES[player_id].values())
+    set_count = win_count + loss_count
+    trny_count = ID_TO_NUM_TOURNAMENTS[player_id]
+    return f"{ID_TO_NAME[player_id]} ({set_count}),{win_count}-{loss_count} in {trny_count} "
 
+
+def write_wins_and_losses_to_sheet():
     def wins_losses_to_string(player_id, sets) -> str:
         for opponent_id, count in sorted(
             sets.items(),
@@ -158,10 +163,6 @@ def write_wins_and_losses_to_sheet():
         res_array_2d.append(cur)
     losses_sheet.clear()
     losses_sheet.update("A1", res_array_2d)
-    # write time to meta sheet
-    sa_time = datetime.now(timezone("America/Los_Angeles"))
-    updated_time = sa_time.strftime("%Y-%m-%d %I:%M %p")
-    meta_sheet.update("A1", [[f"last updated {updated_time}"]])
 
 
 def parse_good_player(player_id: str) -> None:
@@ -181,13 +182,53 @@ def parse_good_player(player_id: str) -> None:
         parse_tournament(tournament_data, player_id)
 
 
+def write_h2h_to_sheet():
+    player_list = [
+        url_to_id(x[1]) for x in get_player_tags_urls_list(include_duplicates=False)
+    ]
+    player_list = sorted(
+        player_list,
+        key=get_or_set_player_badge_count,
+        reverse=True,
+    )
+    res_array_2d = []
+    res_array_2d.append([""] + [ID_TO_NAME[player_id] for player_id in player_list])
+    for main_player in player_list:
+        row = [ID_TO_NAME[main_player]]
+        for opponent in player_list:
+            h2h_str = get_h2h_str(main_player, opponent)
+            if h2h_str == "0-0":
+                h2h_str = ""
+            row.append(h2h_str)
+        res_array_2d.append(row)
+    h2h_sheet.clear()
+    h2h_sheet.update("A1", res_array_2d)
+    # with batch_updater(h2h_sheet) as batch:
+    #     batch.format_cell_range(
+    #         h2h_sheet, "1", cellFormat(textFormat=TextFormat(bold=True))
+    #     )
+    #     batch.set_row_height(h2h_sheet, "1", 32)
+
+
+def write_meta_to_sheet():
+    # write time to meta sheet
+    sa_time = datetime.now(timezone("America/Los_Angeles"))
+    updated_time = sa_time.strftime("%Y-%m-%d %I:%M %p")
+    update_string = f"last updated {updated_time}"
+    meta_sheet.update("A1", [[update_string]])
+    logger.info(f"successfully updated sheet at {updated_time}")
+
+
 def main():
-    for player_name, player_url in get_player_list():
+    for player_name, player_url in get_player_tags_urls_list():
         logger.debug("parsing, player_name=" + player_name)
         player_id = url_to_id(player_url)
+        ID_TO_NAME[player_id] = player_name
         parse_good_player(player_id)
         logger.info("got player " + player_name)
     write_wins_and_losses_to_sheet()
+    write_h2h_to_sheet()
+    write_meta_to_sheet()
 
 
 if __name__ == "__main__":
