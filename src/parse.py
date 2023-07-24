@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pytz import timezone
 
-from common import url_to_id
+from common import url_to_id, xy_to_sheet
 from scrape import (
     get_or_set_player_badge_count,
     get_player_tags_urls_list,
@@ -193,9 +193,9 @@ def write_h2h_to_sheet():
     )
     res_array_2d = []
     res_array_2d.append([""] + [ID_TO_NAME[player_id] for player_id in player_list])
-    for main_player in player_list:
+    for yidx, main_player in enumerate(player_list):
         row = [ID_TO_NAME[main_player]]
-        for opponent in player_list:
+        for xidx, opponent in enumerate(player_list):
             h2h_str = get_h2h_str(main_player, opponent)
             if h2h_str == "0-0":
                 h2h_str = ""
@@ -203,11 +203,33 @@ def write_h2h_to_sheet():
         res_array_2d.append(row)
     h2h_sheet.clear()
     h2h_sheet.update("A1", res_array_2d)
-    # with batch_updater(h2h_sheet) as batch:
-    #     batch.format_cell_range(
-    #         h2h_sheet, "1", cellFormat(textFormat=TextFormat(bold=True))
-    #     )
-    #     batch.set_row_height(h2h_sheet, "1", 32)
+    h2h_sheet.freeze(rows=1, cols=1)
+
+    # --- Formatting  ---
+
+    top_left = "B2"
+    bottom_right = xy_to_sheet(len(player_list), len(player_list))
+    rules = get_conditional_format_rules(h2h_sheet)
+    set_column_width(h2h_sheet, "A:BB", 40)
+    rules.clear()
+    formulas = [
+        f'=INDEX(SPLIT(B2, "-"), 1) {c} INDEX(SPLIT(B2, "-"), 2)' for c in "<>="
+    ]
+    bad = Color(0.8, 0.4, 1)
+    good = Color(0.718, 0.882, 0.804)
+    equal = Color(0.988, 0.91, 0.698)
+    for formula, color in zip(formulas, (bad, good, equal)):
+        rule = ConditionalFormatRule(
+            ranges=[GridRange.from_a1_range(f"{top_left}:{bottom_right}", h2h_sheet)],
+            booleanRule=BooleanRule(
+                condition=BooleanCondition("CUSTOM_FORMULA", [formula]),
+                format=CellFormat(
+                    textFormat=textFormat(bold=True), backgroundColor=color
+                ),
+            ),
+        )
+        rules.append(rule)
+    rules.save()
 
 
 def write_meta_to_sheet():
