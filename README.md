@@ -39,3 +39,11 @@ python src/parse.py
 - [x] scrape on cron on dokku
 - [ ] enforce better ordering of ranked players in sheets. i could try some heuristics like the order they appear in the google sheet. The ranking data from pgstats isn't too helpful.
 - [x] color code / format the h2h sheet
+- [x] ignore irrelevant tournaments (like side events). Taken from list of ids in the google sheet
+- [ ] make meta stats like
+  - [ ] biggest win streak
+  - [ ] bracket demons
+  - [ ] number of ranked players played
+  - [ ] record vs ranked players
+  - [ ] unique players played
+  - [ ] unique ranked players played

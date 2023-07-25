@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 from datetime import datetime
+from pprint import pprint
 
 from pytz import timezone
 
@@ -8,6 +9,7 @@ from scrape import (
     get_or_set_player_badge_count,
     get_player_tags_urls_list,
     get_duplicate_dict_from_sheet,
+    get_banned_tournament_ids,
 )
 import gspread
 from gspread_formatting import *
@@ -49,6 +51,8 @@ ID_TO_NAME = {}
 ID_TO_NUM_TOURNAMENTS = defaultdict(int)
 ID_TO_NUM_TOTAL_SETS = defaultdict(int)
 
+BANNED_TOURNAMENT_IDS = get_banned_tournament_ids()
+
 
 def add_tag(player_id: str, tag: str):
     tag = tag.replace(",", "-")
@@ -63,6 +67,9 @@ COMBINE_LOOKUP = get_duplicate_dict_from_sheet()
 def is_valid_tournament(
     tournament: dict, CUT_OFF_DATE_START: datetime, CUT_OFF_DATE_END: datetime
 ) -> bool:
+    if tournament["info"]["id"] in BANNED_TOURNAMENT_IDS:
+        logger.info(f"banned tournament found, skipping {tournament['info']['id']}")
+        return False
     if tournament["info"].get("online"):
         return False
     start_time = tournament["info"]["start_time"]
@@ -172,12 +179,8 @@ def parse_good_player(player_id: str) -> None:
         if not is_valid_tournament(
             tournament_data, CUT_OFF_DATE_START, CUT_OFF_DATE_END
         ):
-            logger.debug(
-                "skipping tournament" + tournament_data["info"]["tournament_name"]
-            )
             continue
         logger.info(f"adding tournament {info['tournament_name']}")
-
         start_time = datetime.strptime(info["start_time"], "%Y-%m-%dT%H:%M:%S")
         parse_tournament(tournament_data, player_id)
 
@@ -248,6 +251,7 @@ def main():
         ID_TO_NAME[player_id] = player_name
         parse_good_player(player_id)
         logger.info("got player " + player_name)
+
     write_wins_and_losses_to_sheet()
     write_h2h_to_sheet()
     write_meta_to_sheet()

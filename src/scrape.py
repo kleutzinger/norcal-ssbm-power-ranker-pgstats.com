@@ -1,6 +1,7 @@
 import csv
 from datetime import timedelta
 from io import StringIO
+import json
 import time
 from typing import Optional
 import click
@@ -18,6 +19,9 @@ INPUT_SHEET_LINK = (
 COMBINE_GID = "1516543032"
 PERIODS_GID = "841098674"
 HISTORICALLY_RANKED_GID = "1016791450"
+BANNED_TOURNAMENTS_GID = "1111402135"
+
+JSON_DIR = "jsons"
 
 
 def get_sheet_dl(gid: str) -> str:
@@ -59,7 +63,7 @@ def fetch_url_with_retry(
 
 
 def get_csv(csv_dl) -> list:
-    resp = requests.get(csv_dl)
+    resp = fetch_url_with_retry(csv_dl)
     scsv = resp.text
 
     f = StringIO(scsv)
@@ -79,6 +83,12 @@ def get_player_tags_urls_list(include_duplicates: bool = True) -> list[tuple[str
     return rows[1:]
 
 
+def get_banned_tournament_ids() -> list[str]:
+    dl_link = get_sheet_dl(BANNED_TOURNAMENTS_GID)
+    rows = get_csv(dl_link)
+    return [row[0] for row in rows[1:]]
+
+
 def get_duplicate_dict_from_sheet() -> dict:
     duplicate_table = dict()
     rows = get_player_tags_urls_list()
@@ -96,6 +106,11 @@ def get_and_parse_player(player_id: str) -> None:
     results_key = f"{player_id}:results"
     results = fetch_player_results(player_id)
     profile = fetch_player_profile(player_id)
+
+    with open(f"{JSON_DIR}/{player_id}_results.json", "w") as f:
+        json.dump(results, f, indent=2)
+    with open(f"{JSON_DIR}/{player_id}_profile.json", "w") as f:
+        json.dump(profile, f, indent=2)
 
     setj(profile_key, profile)
     setj(results_key, results)

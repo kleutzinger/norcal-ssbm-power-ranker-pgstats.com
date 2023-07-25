@@ -50,6 +50,8 @@ idna==3.4
     # via requests
 importlib-metadata==6.8.0
     # via streamlit
+iterfzf==0.5.0.20.0
+    # via -r requirements.in
 jinja2==3.1.2
     # via
     #   altair
@@ -171,3 +173,6 @@ watchdog==3.0.0
     # via streamlit
 zipp==3.16.2
     # via importlib-metadata
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools

@@ -161,3 +161,4 @@ json/*.json
 *.dir
 *-journal
 service_account.json
+jsons/*.json
