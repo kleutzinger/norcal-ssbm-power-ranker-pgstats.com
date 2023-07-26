@@ -1,6 +1,7 @@
 # Melee Rankings Scraper for PGStats
 
-- This gets all melee sets from the [a google sheet of strong local players](https://docs.google.com/spreadsheets/d/1EQmk2ElCjlC6LiYrmqBcjxpAHL49PTgJRuOwcY1MlPY/edit#gid=0) then from pgstats.com within the ranking period.
+- This gets all melee sets from [a google sheet list of strong local players](https://docs.google.com/spreadsheets/d/1EQmk2ElCjlC6LiYrmqBcjxpAHL49PTgJRuOwcY1MlPY/edit#gid=0). Then we scrape all their data from pgstats.com within the ranking period.
+- We parse the data and write to this [output sheet](https://docs.google.com/spreadsheets/d/1-rj-k-gLWUize_fYmlGVH0zFkBLa14U6nMMonNEkraE/edit#gid=715852685)
 - This is currently hardcoded for the norcal super smash bros melee scene
 
 It outputs a table in google sheets![](./img/2023-06-19-00-43-58.png)
