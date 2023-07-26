@@ -160,7 +160,6 @@ def get_or_set_player_badge_count(player_id: str) -> int:
 @click.option("--skip", is_flag=True, default=False, help="skip players already in db")
 def main(skip):
     scrape_all_players(skip_known=skip)
-    """Simple program that greets NAME for a total of COUNT times."""
 
 
 if __name__ == "__main__":

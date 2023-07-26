@@ -24,6 +24,10 @@ DESIRED_SHEETS = ["wins", "losses", "h2h", "meta"]
 
 gc = gspread.service_account(filename=get_service_account_file_path())
 
+bad = Color(0.8, 0.4, 1)
+good = Color(0.718, 0.882, 0.804)
+equal = Color(0.988, 0.91, 0.698)
+
 # TODO: don't hardcode the sheet name value
 logger.info("creating sheets if nonexistent")
 relevant_doc = gc.open("Norcal PR Summer 2023")
@@ -55,7 +59,9 @@ BANNED_TOURNAMENT_IDS = get_banned_tournament_ids()
 
 
 def add_tag(player_id: str, tag: str):
-    tag = tag.replace(",", "-")
+    for c in ["(", ")", "-"]:
+        tag = tag.replace(c, "_")
+    # literal null check (gio)
     if tag == "":
         tag = "_null"
     ID_TO_NAME[player_id] = tag
@@ -135,13 +141,44 @@ def leftmost_colum_gen(player_id) -> str:
 
 
 def write_wins_and_losses_to_sheet():
-    def wins_losses_to_string(player_id, sets) -> str:
+    def wins_losses_to_string(player_id, sets, rev_good_bad_order=False) -> str:
         for opponent_id, count in sorted(
             sets.items(),
             key=lambda x: get_or_set_player_badge_count(x[0]),
-            reverse=True,
+            reverse=not rev_good_bad_order,
         ):
-            yield f"{ID_TO_NAME[opponent_id]} ({get_h2h_str(player_id, opponent_id)})"
+            yield f"{get_h2h_str(player_id, opponent_id)} {ID_TO_NAME[opponent_id]}"
+
+    def apply_formatting_win_loss(cur_sheet, res_array_2d, results_dict):
+        rules = get_conditional_format_rules(cur_sheet)
+        # results cells
+        set_column_width(cur_sheet, "B:BB", 80)
+        # player name on the left
+        set_column_width(cur_sheet, "A:A", 200)
+        rules.clear()
+        formulas = [
+            f'=INDEX(SPLIT(B1, "-"), 1) {c} INDEX(SPLIT(INDEX(SPLIT(B1, "-"), 2)," "),1)'
+            for c in "<>="
+        ]
+        top_left = "B1"
+        bottom_right = xy_to_sheet(
+            len(results_dict) - 1, max([len(x) for x in res_array_2d]) - 1
+        )
+        cur_sheet.format(f"A1:{bottom_right}", {"wrapStrategy": "clip"})
+        for formula, color in zip(formulas, (bad, good, equal)):
+            rule = ConditionalFormatRule(
+                ranges=[
+                    GridRange.from_a1_range(f"{top_left}:{bottom_right}", cur_sheet)
+                ],
+                booleanRule=BooleanRule(
+                    condition=BooleanCondition("CUSTOM_FORMULA", [formula]),
+                    format=CellFormat(backgroundColor=color),
+                ),
+            )
+            rules.append(rule)
+
+        cur_sheet.freeze(cols=1)
+        rules.save()
 
     res_array_2d = []
     # WINS
@@ -156,6 +193,7 @@ def write_wins_and_losses_to_sheet():
         res_array_2d.append(cur)
     wins_sheet.clear()
     wins_sheet.update("A1", res_array_2d)
+    apply_formatting_win_loss(wins_sheet, res_array_2d, PLAYER_TO_WINS)
 
     # LOSSES
     res_array_2d = []
@@ -165,11 +203,12 @@ def write_wins_and_losses_to_sheet():
         reverse=True,
     ):
         cur = [leftmost_colum_gen(player_id)] + list(
-            wins_losses_to_string(player_id, losses)
+            wins_losses_to_string(player_id, losses, rev_good_bad_order=True)
         )
         res_array_2d.append(cur)
     losses_sheet.clear()
     losses_sheet.update("A1", res_array_2d)
+    apply_formatting_win_loss(losses_sheet, res_array_2d, PLAYER_TO_LOSSES)
 
 
 def parse_good_player(player_id: str) -> None:
@@ -218,9 +257,6 @@ def write_h2h_to_sheet():
     formulas = [
         f'=INDEX(SPLIT(B2, "-"), 1) {c} INDEX(SPLIT(B2, "-"), 2)' for c in "<>="
     ]
-    bad = Color(0.8, 0.4, 1)
-    good = Color(0.718, 0.882, 0.804)
-    equal = Color(0.988, 0.91, 0.698)
     for formula, color in zip(formulas, (bad, good, equal)):
         rule = ConditionalFormatRule(
             ranges=[GridRange.from_a1_range(f"{top_left}:{bottom_right}", h2h_sheet)],
