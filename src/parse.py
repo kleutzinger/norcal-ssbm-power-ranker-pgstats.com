@@ -100,7 +100,6 @@ def rewrite_ids(set_data):
 
 def parse_tournament(tournament: dict, player_id=None) -> None:
     # collect all wins and losses
-    ID_TO_NUM_TOURNAMENTS[player_id] += 1
     for set_data in tournament["sets"]:
         if player_id in COMBINE_LOOKUP:
             player_id = COMBINE_LOOKUP[player_id]
@@ -153,6 +152,7 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
         else:
             logger.error("unknown result, no valid winner_id found")
             logger.info(set_data)
+    ID_TO_NUM_TOURNAMENTS[player_id] += 1
 
 
 def get_h2h_str(player_id, opponent_id) -> str:

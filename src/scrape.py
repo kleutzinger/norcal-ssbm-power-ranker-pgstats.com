@@ -154,7 +154,9 @@ def get_or_set_player_badge_count(player_id: str) -> int:
     data = fetch_url_with_retry(
         f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
     ).json()
-    num_badges = len(data["result"]["badges"]["by_events"])
+    num_badges = len(
+        [i for i in data["result"]["badges"]["by_events"] if not i["online"]]
+    )
     r.set(badge_key, num_badges, ex=timedelta(weeks=4))
     return num_badges
 
