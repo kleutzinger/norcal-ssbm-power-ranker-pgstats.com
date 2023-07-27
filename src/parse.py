@@ -54,6 +54,7 @@ PLAYER_TO_LOSSES = defaultdict(Counter)
 ID_TO_NAME = {}
 ID_TO_NUM_TOURNAMENTS = defaultdict(int)
 ID_TO_NUM_TOTAL_SETS = defaultdict(int)
+pvp_results_str = defaultdict(str)
 
 BANNED_TOURNAMENT_IDS = get_banned_tournament_ids()
 
@@ -68,6 +69,10 @@ def add_tag(player_id: str, tag: str):
 
 
 COMBINE_LOOKUP = get_duplicate_dict_from_sheet()
+
+
+def player_to_player_history(player_id, opponent_id):
+    results = getj(f"{player_id}:results")
 
 
 def is_valid_tournament(
@@ -104,10 +109,19 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
         add_tag(set_data["p2_id"], set_data["p2_tag"])
         get_or_set_player_badge_count(set_data["p1_id"])
         get_or_set_player_badge_count(set_data["p2_id"])
+        if tournament["info"]["tournament_name"] is not None:
+            short_trny = tournament["info"]["tournament_name"][:50]
+        else:
+            short_trny = "unknown"
         winner_id = set_data["winner_id"]
         loser_id = (
             set([set_data["p1_id"], set_data["p2_id"]]) - set([set_data["winner_id"]])
         ).pop()
+        if set_data["p1_score"] is None or set_data["p2_score"] is None:
+            winner_score, loser_score = "?", "?"
+        else:
+            winner_score = max(set_data["p1_score"], set_data["p2_score"])
+            loser_score = min(set_data["p1_score"], set_data["p2_score"])
         logger.debug(f"{ID_TO_NAME[winner_id]} beats {ID_TO_NAME[loser_id]}")
         if set_data["dq"]:
             logger.info(
@@ -115,12 +129,27 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
             )
             continue
         ID_TO_NUM_TOTAL_SETS[player_id] += 1
+        if pvp_results_str[(winner_id, loser_id)] == "":
+            pvp_results_str[
+                (winner_id, loser_id)
+            ] += f"{ID_TO_NAME[winner_id]} vs {ID_TO_NAME[loser_id]}\n"
+        if pvp_results_str[(loser_id, winner_id)] == "":
+            pvp_results_str[
+                (loser_id, winner_id)
+            ] += f"{ID_TO_NAME[loser_id]} vs {ID_TO_NAME[winner_id]}\n"
+
         if winner_id == player_id:
             # player won
             PLAYER_TO_WINS[player_id][loser_id] += 1
+            pvp_results_str[
+                (player_id, loser_id)
+            ] += f"\n\nwin  {winner_score}-{loser_score} at {short_trny} {tournament['info']['start_time'].split('T')[0]} [{tournament['info']['id']}]"
         elif loser_id == player_id:
             # player lost
             PLAYER_TO_LOSSES[player_id][winner_id] += 1
+            pvp_results_str[
+                (player_id, winner_id)
+            ] += f"\n\nloss  {loser_score}-{winner_score} at {short_trny} {tournament['info']['start_time'].split('T')[0]} [{tournament['info']['id']}]"
         else:
             logger.error("unknown result, no valid winner_id found")
             logger.info(set_data)
@@ -149,7 +178,9 @@ def write_wins_and_losses_to_sheet():
         ):
             yield f"{get_h2h_str(player_id, opponent_id)} {ID_TO_NAME[opponent_id]}"
 
-    def apply_formatting_win_loss(cur_sheet, res_array_2d, results_dict):
+    def apply_formatting_win_loss(
+        cur_sheet, res_array_2d, results_dict, notes_to_add: dict = {}
+    ):
         rules = get_conditional_format_rules(cur_sheet)
         # results cells
         set_column_width(cur_sheet, "B:BB", 80)
@@ -164,6 +195,7 @@ def write_wins_and_losses_to_sheet():
         bottom_right = xy_to_sheet(
             len(results_dict) - 1, max([len(x) for x in res_array_2d]) - 1
         )
+        cur_sheet.clear_notes(f"{top_left}:{bottom_right}")
         cur_sheet.format(f"A1:{bottom_right}", {"wrapStrategy": "clip"})
         for formula, color in zip(formulas, (bad, good, equal)):
             rule = ConditionalFormatRule(
@@ -179,13 +211,17 @@ def write_wins_and_losses_to_sheet():
 
         cur_sheet.freeze(cols=1)
         rules.save()
+        if notes_to_add:
+            cur_sheet.insert_notes(notes_to_add)
 
     res_array_2d = []
     # WINS
-    for player_id, wins in sorted(
-        PLAYER_TO_WINS.items(),
-        key=lambda x: get_or_set_player_badge_count(x[0]),
-        reverse=True,
+    for yidx, (player_id, wins) in enumerate(
+        sorted(
+            PLAYER_TO_WINS.items(),
+            key=lambda x: get_or_set_player_badge_count(x[0]),
+            reverse=True,
+        )
     ):
         cur = [leftmost_colum_gen(player_id)] + list(
             wins_losses_to_string(player_id, wins)
@@ -213,14 +249,19 @@ def write_wins_and_losses_to_sheet():
 
 def parse_good_player(player_id: str) -> None:
     player_tournaments = getj(f"{player_id}:results")
-    for tournament_id, tournament_data in player_tournaments.items():
+
+    def data_to_start_time(data):
+        return datetime.strptime(data["info"]["start_time"], "%Y-%m-%dT%H:%M:%S")
+
+    for tournament_id, tournament_data in sorted(
+        player_tournaments.items(), key=lambda x: data_to_start_time(x[1])
+    ):
         info = tournament_data["info"]
         if not is_valid_tournament(
             tournament_data, CUT_OFF_DATE_START, CUT_OFF_DATE_END
         ):
             continue
         logger.info(f"adding tournament {info['tournament_name']}")
-        start_time = datetime.strptime(info["start_time"], "%Y-%m-%dT%H:%M:%S")
         parse_tournament(tournament_data, player_id)
 
 
@@ -233,6 +274,10 @@ def write_h2h_to_sheet():
         key=get_or_set_player_badge_count,
         reverse=True,
     )
+    top_left = "B2"
+    bottom_right = xy_to_sheet(len(player_list), len(player_list))
+    h2h_sheet.clear_notes(f"{top_left}:{bottom_right}")
+    notes_to_add = {}
     res_array_2d = []
     res_array_2d.append([""] + [ID_TO_NAME[player_id] for player_id in player_list])
     for yidx, main_player in enumerate(player_list):
@@ -242,6 +287,9 @@ def write_h2h_to_sheet():
             if h2h_str == "0-0":
                 h2h_str = ""
             row.append(h2h_str)
+            notes_to_add[xy_to_sheet(yidx + 1, xidx + 1)] = pvp_results_str[
+                (main_player, opponent)
+            ]
         res_array_2d.append(row)
     h2h_sheet.clear()
     h2h_sheet.update("A1", res_array_2d)
@@ -249,8 +297,6 @@ def write_h2h_to_sheet():
 
     # --- Formatting  ---
 
-    top_left = "B2"
-    bottom_right = xy_to_sheet(len(player_list), len(player_list))
     rules = get_conditional_format_rules(h2h_sheet)
     set_column_width(h2h_sheet, "A:BB", 40)
     rules.clear()
@@ -269,6 +315,7 @@ def write_h2h_to_sheet():
         )
         rules.append(rule)
     rules.save()
+    h2h_sheet.insert_notes(notes_to_add)
 
 
 def write_meta_to_sheet():
@@ -291,6 +338,9 @@ def main():
     write_wins_and_losses_to_sheet()
     write_h2h_to_sheet()
     write_meta_to_sheet()
+
+    # batch add notes
+    # https://github.com/burnash/gspread/pull/1189/commits/c192725dfbd2c922134cdd6de3201088acd1dfd6
 
 
 if __name__ == "__main__":

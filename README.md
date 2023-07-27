@@ -50,3 +50,7 @@ python src/parse.py
   - [ ] unique players played
   - [ ] unique ranked players played
 - [ ] figure out a way to globally order tournament sets
+- [ ] turn players into links
+- [x] look into adding comments on cells to list when players played
+  - [x] notes in h2h
+  - [ ] notes in wins/losses

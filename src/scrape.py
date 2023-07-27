@@ -121,7 +121,10 @@ def fetch_player_profile(player_id: str) -> dict:
         f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
     ).json()
     profile = data["result"]
-    profile["num_badges"] = len(profile["badges"]["by_events"])
+    profile["num_badges"] = len(
+        [i for i in profile["badges"]["by_events"] if not i["online"]]
+    )
+
     del profile["badges"]
     del profile["placings"]
     return profile
