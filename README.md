@@ -53,4 +53,4 @@ python src/parse.py
 - [ ] turn players into links
 - [x] look into adding comments on cells to list when players played
   - [x] notes in h2h
-  - [ ] notes in wins/losses
+  - [x] notes in wins/losses

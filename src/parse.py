@@ -170,12 +170,16 @@ def leftmost_colum_gen(player_id) -> str:
 
 
 def write_wins_and_losses_to_sheet():
-    def wins_losses_to_string(player_id, sets, rev_good_bad_order=False) -> str:
+    def sorted_opponent_ids(player_id, sets, rev_good_bad_order=False) -> str:
         for opponent_id, count in sorted(
             sets.items(),
             key=lambda x: get_or_set_player_badge_count(x[0]),
             reverse=not rev_good_bad_order,
         ):
+            yield opponent_id
+
+    def wins_losses_to_string(player_id, opponent_ids: list[str]) -> str:
+        for opponent_id in opponent_ids:
             yield f"{get_h2h_str(player_id, opponent_id)} {ID_TO_NAME[opponent_id]}"
 
     def apply_formatting_win_loss(
@@ -212,10 +216,12 @@ def write_wins_and_losses_to_sheet():
         cur_sheet.freeze(cols=1)
         rules.save()
         if notes_to_add:
+            cur_sheet.clear_notes(f"{top_left}:{bottom_right}")
             cur_sheet.insert_notes(notes_to_add)
 
     res_array_2d = []
     # WINS
+    win_notes = {}
     for yidx, (player_id, wins) in enumerate(
         sorted(
             PLAYER_TO_WINS.items(),
@@ -223,28 +229,40 @@ def write_wins_and_losses_to_sheet():
             reverse=True,
         )
     ):
+        opponents = list(sorted_opponent_ids(player_id, wins, False))
         cur = [leftmost_colum_gen(player_id)] + list(
-            wins_losses_to_string(player_id, wins)
+            wins_losses_to_string(player_id, opponents)
         )
+        for xidx, opponent_id in enumerate(opponents):
+            win_notes[xy_to_sheet(yidx, xidx + 1)] = pvp_results_str[
+                (player_id, opponent_id)
+            ]
         res_array_2d.append(cur)
-    wins_sheet.clear()
     wins_sheet.update("A1", res_array_2d)
-    apply_formatting_win_loss(wins_sheet, res_array_2d, PLAYER_TO_WINS)
+    apply_formatting_win_loss(wins_sheet, res_array_2d, PLAYER_TO_WINS, win_notes)
 
     # LOSSES
+    loss_notes = {}
     res_array_2d = []
-    for player_id, losses in sorted(
-        PLAYER_TO_LOSSES.items(),
-        key=lambda x: get_or_set_player_badge_count(x[0]),
-        reverse=True,
-    ):
-        cur = [leftmost_colum_gen(player_id)] + list(
-            wins_losses_to_string(player_id, losses, rev_good_bad_order=True)
+    for yidx, (player_id, losses) in enumerate(
+        sorted(
+            PLAYER_TO_LOSSES.items(),
+            key=lambda x: get_or_set_player_badge_count(x[0]),
+            reverse=True,
         )
+    ):
+        opponents = list(sorted_opponent_ids(player_id, losses, True))
+        cur = [leftmost_colum_gen(player_id)] + list(
+            wins_losses_to_string(player_id, opponents)
+        )
+        for xidx, opponent_id in enumerate(opponents):
+            loss_notes[xy_to_sheet(yidx, xidx + 1)] = pvp_results_str[
+                (player_id, opponent_id)
+            ]
         res_array_2d.append(cur)
     losses_sheet.clear()
     losses_sheet.update("A1", res_array_2d)
-    apply_formatting_win_loss(losses_sheet, res_array_2d, PLAYER_TO_LOSSES)
+    apply_formatting_win_loss(losses_sheet, res_array_2d, PLAYER_TO_LOSSES, loss_notes)
 
 
 def parse_good_player(player_id: str) -> None:
