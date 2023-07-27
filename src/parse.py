@@ -199,7 +199,6 @@ def write_wins_and_losses_to_sheet():
         bottom_right = xy_to_sheet(
             len(results_dict) - 1, max([len(x) for x in res_array_2d]) - 1
         )
-        cur_sheet.clear_notes(f"{top_left}:{bottom_right}")
         cur_sheet.format(f"A1:{bottom_right}", {"wrapStrategy": "clip"})
         for formula, color in zip(formulas, (bad, good, equal)):
             rule = ConditionalFormatRule(
@@ -216,8 +215,9 @@ def write_wins_and_losses_to_sheet():
         cur_sheet.freeze(cols=1)
         rules.save()
         if notes_to_add:
-            cur_sheet.clear_notes(f"{top_left}:{bottom_right}")
-            cur_sheet.insert_notes(notes_to_add)
+            logger.info(f"clearing notes {top_left}:{bottom_right}")
+            # cur_sheet.clear_notes(f"{top_left}:{bottom_right}")
+            cur_sheet.update_notes(notes_to_add)
 
     res_array_2d = []
     # WINS
