@@ -216,7 +216,10 @@ def write_wins_and_losses_to_sheet():
         rules.save()
         if notes_to_add:
             logger.info(f"clearing notes {top_left}:{bottom_right}")
-            # cur_sheet.clear_notes(f"{top_left}:{bottom_right}")
+            try:
+                cur_sheet.clear_notes(f"{top_left}:{bottom_right}")
+            except Exception as e:
+                logger.error(e)
             cur_sheet.update_notes(notes_to_add)
 
     res_array_2d = []
@@ -238,6 +241,7 @@ def write_wins_and_losses_to_sheet():
                 (player_id, opponent_id)
             ]
         res_array_2d.append(cur)
+    wins_sheet.clear()
     wins_sheet.update("A1", res_array_2d)
     apply_formatting_win_loss(wins_sheet, res_array_2d, PLAYER_TO_WINS, win_notes)
 
