@@ -157,7 +157,7 @@ def get_or_set_player_badge_count(player_id: str) -> int:
     num_badges = len(
         [i for i in data["result"]["badges"]["by_events"] if not i["online"]]
     )
-    r.set(badge_key, num_badges, ex=timedelta(weeks=4))
+    r.set(badge_key, num_badges, ex=timedelta(days=3))
     return num_badges
 
 

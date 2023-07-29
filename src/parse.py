@@ -198,10 +198,10 @@ def write_wins_and_losses_to_sheet():
         R = 'INDEX(SPLIT(INDEX(SPLIT(B1, " - "), 2)," "),1)'
         rules.clear()
         formula_colors = [
-            (f"=AND({L} < {R}, {L} = 0)", badbad),
-            (f"=AND({L} < {R}, {L} > 0)", bad),
-            (f"=AND({L} > {R}, {R} = 0)", goodgood),
-            (f"=AND({L} > {R}, {R} > 0)", good),
+            (f"=AND({L} < {R}, ({R} - {L} >= 2))", badbad),
+            (f"=AND({L} < {R}, ({R} - {L} <  2))", bad),
+            (f"=AND({L} > {R}, ({L} - {R} >= 2))", goodgood),
+            (f"=AND({L} > {R}, ({L} - {R} <  2))", good),
             (f"={L} = {R}", equal),
         ]
         top_left = "B1"
@@ -334,10 +334,10 @@ def write_h2h_to_sheet():
     L = 'INDEX(SPLIT(B2, " - "), 1)'
     R = 'INDEX(SPLIT(B2, " - "), 2)'
     formula_colors = [
-        (f"=AND({L} < {R}, {L} = 0)", badbad),
-        (f"=AND({L} < {R}, {L} > 0)", bad),
-        (f"=AND({L} > {R}, {R} = 0)", goodgood),
-        (f"=AND({L} > {R}, {R} > 0)", good),
+        (f"=AND({L} < {R}, ({R} - {L} >= 2))", badbad),
+        (f"=AND({L} < {R}, ({R} - {L} <  2))", bad),
+        (f"=AND({L} > {R}, ({L} - {R} >= 2))", goodgood),
+        (f"=AND({L} > {R}, ({L} - {R} <  2))", good),
         (f"={L} = {R}", equal),
     ]
     for formula, color in formula_colors:
