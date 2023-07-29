@@ -4,7 +4,7 @@ from pprint import pprint
 
 from pytz import timezone
 
-from common import url_to_id, xy_to_sheet
+from common import hex_to_rgb, url_to_id, xy_to_sheet
 from scrape import (
     get_or_set_player_badge_count,
     get_player_tags_urls_list,
@@ -24,8 +24,11 @@ DESIRED_SHEETS = ["wins", "losses", "h2h", "meta"]
 
 gc = gspread.service_account(filename=get_service_account_file_path())
 
-bad = Color(0.8, 0.4, 1)
-good = Color(0.718, 0.882, 0.804)
+# color schemes
+bad = Color(*hex_to_rgb("#FF8696"))
+badbad = Color(*hex_to_rgb("#FF3333"))
+good = Color(*hex_to_rgb("#66FFB2"))
+goodgood = Color(*hex_to_rgb("#00CC00"))
 equal = Color(0.988, 0.91, 0.698)
 
 # TODO: don't hardcode the sheet name value
@@ -190,17 +193,23 @@ def write_wins_and_losses_to_sheet():
         set_column_width(cur_sheet, "B:BB", 80)
         # player name on the left
         set_column_width(cur_sheet, "A:A", 200)
+        # records are `L-R` i.e. 2-3
+        L = 'INDEX(SPLIT(B1, " - "), 1)'
+        R = 'INDEX(SPLIT(INDEX(SPLIT(B1, " - "), 2)," "),1)'
         rules.clear()
-        formulas = [
-            f'=INDEX(SPLIT(B1, "-"), 1) {c} INDEX(SPLIT(INDEX(SPLIT(B1, "-"), 2)," "),1)'
-            for c in "<>="
+        formula_colors = [
+            (f"=AND({L} < {R}, {L} = 0)", badbad),
+            (f"=AND({L} < {R}, {L} > 0)", bad),
+            (f"=AND({L} > {R}, {R} = 0)", goodgood),
+            (f"=AND({L} > {R}, {R} > 0)", good),
+            (f"={L} = {R}", equal),
         ]
         top_left = "B1"
         bottom_right = xy_to_sheet(
             len(results_dict) - 1, max([len(x) for x in res_array_2d]) - 1
         )
         cur_sheet.format(f"A1:{bottom_right}", {"wrapStrategy": "clip"})
-        for formula, color in zip(formulas, (bad, good, equal)):
+        for formula, color in formula_colors:
             rule = ConditionalFormatRule(
                 ranges=[
                     GridRange.from_a1_range(f"{top_left}:{bottom_right}", cur_sheet)
@@ -322,10 +331,16 @@ def write_h2h_to_sheet():
     rules = get_conditional_format_rules(h2h_sheet)
     set_column_width(h2h_sheet, "A:BB", 40)
     rules.clear()
-    formulas = [
-        f'=INDEX(SPLIT(B2, "-"), 1) {c} INDEX(SPLIT(B2, "-"), 2)' for c in "<>="
+    L = 'INDEX(SPLIT(B2, " - "), 1)'
+    R = 'INDEX(SPLIT(B2, " - "), 2)'
+    formula_colors = [
+        (f"=AND({L} < {R}, {L} = 0)", badbad),
+        (f"=AND({L} < {R}, {L} > 0)", bad),
+        (f"=AND({L} > {R}, {R} = 0)", goodgood),
+        (f"=AND({L} > {R}, {R} > 0)", good),
+        (f"={L} = {R}", equal),
     ]
-    for formula, color in zip(formulas, (bad, good, equal)):
+    for formula, color in formula_colors:
         rule = ConditionalFormatRule(
             ranges=[GridRange.from_a1_range(f"{top_left}:{bottom_right}", h2h_sheet)],
             booleanRule=BooleanRule(
