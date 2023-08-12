@@ -1,6 +1,5 @@
 from collections import Counter, defaultdict
 from datetime import datetime
-from pprint import pprint
 
 from pytz import timezone
 
@@ -307,6 +306,7 @@ def write_h2h_to_sheet():
     )
     top_left = "B2"
     bottom_right = xy_to_sheet(len(player_list), len(player_list))
+    logger.info(f"clearing notes {top_left}:{bottom_right}")
     h2h_sheet.clear_notes(f"{top_left}:{bottom_right}")
     notes_to_add = {}
     res_array_2d = []
