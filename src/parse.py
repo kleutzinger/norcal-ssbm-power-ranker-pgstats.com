@@ -36,7 +36,7 @@ relevant_doc = gc.open("Norcal PR Summer 2023")
 present_titles = [w.title for w in relevant_doc.worksheets()]
 for sheet_name in DESIRED_SHEETS:
     if sheet_name not in present_titles:
-        relevant_doc.add_worksheet(title=sheet_name, rows=100, cols=20)
+        relevant_doc.add_worksheet(title=sheet_name, rows=200, cols=200)
         logger.info(f"created sheet {sheet_name}")
     else:
         logger.info(f"found sheet {sheet_name}")
@@ -306,8 +306,6 @@ def write_h2h_to_sheet():
     )
     top_left = "B2"
     bottom_right = xy_to_sheet(len(player_list), len(player_list))
-    logger.info(f"clearing notes {top_left}:{bottom_right}")
-    h2h_sheet.clear_notes(f"{top_left}:{bottom_right}")
     notes_to_add = {}
     res_array_2d = []
     res_array_2d.append([""] + [ID_TO_NAME[player_id] for player_id in player_list])
@@ -352,6 +350,8 @@ def write_h2h_to_sheet():
         )
         rules.append(rule)
     rules.save()
+    logger.info(f"clearing notes {top_left}:{bottom_right}")
+    h2h_sheet.clear_notes(f"{top_left}:{bottom_right}")
     h2h_sheet.insert_notes(notes_to_add)
 
 
