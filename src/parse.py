@@ -157,6 +157,21 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
     ID_TO_NUM_TOURNAMENTS[player_id] += 1
 
 
+def clear_and_update_notes(cur_sheet: str, range_: str, notes_to_add: dict) -> None:
+    logger.info(f"updating notes for {range_} on {cur_sheet}")
+    if notes_to_add:
+        logger.info(f"clearing notes f{range_}")
+        try:
+            cur_sheet.clear_notes(range_)
+        except Exception as e:
+            logger.error(e)
+        logger.info("updating notes")
+        try:
+            cur_sheet.update_notes(notes_to_add)
+        except Exception as e:
+            logger.error(e)
+
+
 def get_h2h_str(player_id, opponent_id) -> str:
     wins = PLAYER_TO_WINS[player_id][opponent_id]
     losses = PLAYER_TO_LOSSES[player_id][opponent_id]
@@ -222,13 +237,8 @@ def write_wins_and_losses_to_sheet():
 
         cur_sheet.freeze(cols=1)
         rules.save()
-        if notes_to_add:
-            logger.info(f"clearing notes {top_left}:{bottom_right}")
-            try:
-                cur_sheet.clear_notes(f"{top_left}:{bottom_right}")
-            except Exception as e:
-                logger.error(e)
-            cur_sheet.update_notes(notes_to_add)
+        # put call here
+        clear_and_update_notes(cur_sheet, f":{top_left}:{bottom_right}", notes_to_add)
 
     res_array_2d = []
     # WINS
@@ -350,9 +360,7 @@ def write_h2h_to_sheet():
         )
         rules.append(rule)
     rules.save()
-    logger.info(f"clearing notes {top_left}:{bottom_right}")
-    h2h_sheet.clear_notes(f"{top_left}:{bottom_right}")
-    h2h_sheet.insert_notes(notes_to_add)
+    clear_and_update_notes(h2h_sheet, f":{top_left}:{bottom_right}", notes_to_add)
 
 
 def write_meta_to_sheet():
