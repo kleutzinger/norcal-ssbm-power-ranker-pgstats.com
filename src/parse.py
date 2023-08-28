@@ -185,7 +185,7 @@ def leftmost_colum_gen(player_id) -> str:
     trny_count = ID_TO_NUM_TOURNAMENTS[player_id]
     pname = ID_TO_NAME[player_id]
     pstats = f"https://www.pgstats.com/melee/player/{pname}?id={player_id}"
-    return f'=HYPERLINK("{pstats}", "{pname} ({set_count}s|{trny_count}t)")'
+    return f"{pname} ({set_count}s | {trny_count}t)"
 
 
 def write_wins_and_losses_to_sheet():
@@ -368,7 +368,7 @@ def write_h2h_to_sheet():
 def write_meta_to_sheet():
     # write time to meta sheet
     sa_time = datetime.now(timezone("America/Los_Angeles"))
-    updated_time = sa_time.strftime("%Y-%m-%d %I:%M %p")
+    updated_time = sa_time.strftime("%Y-%m-%d %I:%M:%S %p")
     update_string = f"last updated {updated_time}"
     meta_sheet.update("A1", [[update_string]])
     logger.info(f"successfully updated sheet at {updated_time}")
