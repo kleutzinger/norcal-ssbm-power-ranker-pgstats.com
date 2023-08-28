@@ -183,7 +183,9 @@ def leftmost_colum_gen(player_id) -> str:
     loss_count = sum(PLAYER_TO_LOSSES[player_id].values())
     set_count = win_count + loss_count
     trny_count = ID_TO_NUM_TOURNAMENTS[player_id]
-    return f"{ID_TO_NAME[player_id]} ({set_count}),{win_count}-{loss_count} in {trny_count} "
+    pname = ID_TO_NAME[player_id]
+    pstats = f"https://www.pgstats.com/melee/player/{pname}?id={player_id}"
+    return f'=HYPERLINK("{pstats}", "{pname} ({set_count}s|{trny_count}t)")'
 
 
 def write_wins_and_losses_to_sheet():
