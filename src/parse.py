@@ -53,10 +53,13 @@ CUT_OFF_DATE_END = datetime(2023, 12, 31)
 
 PLAYER_TO_WINS = defaultdict(Counter)
 PLAYER_TO_LOSSES = defaultdict(Counter)
+PLAYERS_SETS = defaultdict(set)
+P2P_GAME_COUNTS = defaultdict(lambda: [0, 0])
+ALL_SETS_EVER = dict()
 ID_TO_NAME = {}
 ID_TO_NUM_TOURNAMENTS = defaultdict(int)
 ID_TO_NUM_TOTAL_SETS = defaultdict(int)
-pvp_results_str = defaultdict(str)
+trny_history_str = defaultdict(str)
 
 BANNED_TOURNAMENT_IDS = get_banned_tournament_ids()
 
@@ -130,27 +133,37 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
             )
             continue
         ID_TO_NUM_TOTAL_SETS[player_id] += 1
-        if pvp_results_str[(winner_id, loser_id)] == "":
-            pvp_results_str[
-                (winner_id, loser_id)
-            ] += f"{ID_TO_NAME[winner_id]} vs {ID_TO_NAME[loser_id]}\n"
-        if pvp_results_str[(loser_id, winner_id)] == "":
-            pvp_results_str[
-                (loser_id, winner_id)
-            ] += f"{ID_TO_NAME[loser_id]} vs {ID_TO_NAME[winner_id]}\n"
+        winner_name = ID_TO_NAME[winner_id]
+        loser_name = ID_TO_NAME[loser_id]
+        set_identifier = (
+            f"{winner_name}-{loser_name}-{tournament['info']['id']}-{set_data['id']}"
+        )
+        set_seen_before = set_identifier in ALL_SETS_EVER
+        ALL_SETS_EVER[set_identifier] = set_data
+        if not set_seen_before:
+            # add the game counts
+            try:
+                P2P_GAME_COUNTS[(winner_id, loser_id)][0] += int(winner_score)
+                P2P_GAME_COUNTS[(loser_id, winner_id)][1] += int(winner_score)
+                P2P_GAME_COUNTS[(winner_id, loser_id)][1] += int(loser_score)
+                P2P_GAME_COUNTS[(loser_id, winner_id)][0] += int(loser_score)
+            except ValueError:
+                logger.error(f"invalid score found: {winner_score}-{loser_score}")
 
         if winner_id == player_id:
             # player won
             PLAYER_TO_WINS[player_id][loser_id] += 1
-            pvp_results_str[
+            trny_history_str[
                 (player_id, loser_id)
-            ] += f"\n\nwin  {winner_score}-{loser_score} at {short_trny} {tournament['info']['start_time'].split('T')[0]} [{tournament['info']['id']}]"
+            ] += f"win {winner_score}-{loser_score} at {short_trny} {tournament['info']['start_time'].split('T')[0]} [{tournament['info']['id']}]\n\n"
+            PLAYERS_SETS[frozenset((winner_id, loser_id))].add(set_identifier)
+
         elif loser_id == player_id:
             # player lost
             PLAYER_TO_LOSSES[player_id][winner_id] += 1
-            pvp_results_str[
+            trny_history_str[
                 (player_id, winner_id)
-            ] += f"\n\nloss  {loser_score}-{winner_score} at {short_trny} {tournament['info']['start_time'].split('T')[0]} [{tournament['info']['id']}]"
+            ] += f"loss {loser_score}-{winner_score} at {short_trny} {tournament['info']['start_time'].split('T')[0]} [{tournament['info']['id']}]\n\n"
         else:
             logger.error("unknown result, no valid winner_id found")
             logger.info(set_data)
@@ -239,7 +252,6 @@ def write_wins_and_losses_to_sheet():
 
         cur_sheet.freeze(cols=1)
         rules.save()
-        # put call here
         clear_and_update_notes(cur_sheet, f":{top_left}:{bottom_right}", notes_to_add)
 
     res_array_2d = []
@@ -257,9 +269,9 @@ def write_wins_and_losses_to_sheet():
             wins_losses_to_string(player_id, opponents)
         )
         for xidx, opponent_id in enumerate(opponents):
-            win_notes[xy_to_sheet(yidx, xidx + 1)] = pvp_results_str[
-                (player_id, opponent_id)
-            ]
+            win_notes[xy_to_sheet(yidx, xidx + 1)] = get_pvp_note_str(
+                player_id, opponent_id
+            )
         res_array_2d.append(cur)
     wins_sheet.clear()
     wins_sheet.update("A1", res_array_2d)
@@ -280,9 +292,9 @@ def write_wins_and_losses_to_sheet():
             wins_losses_to_string(player_id, opponents)
         )
         for xidx, opponent_id in enumerate(opponents):
-            loss_notes[xy_to_sheet(yidx, xidx + 1)] = pvp_results_str[
-                (player_id, opponent_id)
-            ]
+            loss_notes[xy_to_sheet(yidx, xidx + 1)] = get_pvp_note_str(
+                player_id, opponent_id
+            )
         res_array_2d.append(cur)
     losses_sheet.clear()
     losses_sheet.update("A1", res_array_2d)
@@ -307,6 +319,19 @@ def parse_good_player(player_id: str) -> None:
         parse_tournament(tournament_data, player_id)
 
 
+def get_pvp_note_str(player_id, opponent_id):
+    won_games, lost_games = P2P_GAME_COUNTS[(player_id, opponent_id)]
+    if won_games == 0 and lost_games == 0:
+        return ""
+    player_name = ID_TO_NAME[player_id].upper()
+    opponent_name = ID_TO_NAME[opponent_id]
+    out = f"{player_name} vs {opponent_name} "
+    out += f"({get_h2h_str(player_id, opponent_id)})"
+    out += f"\ngame count: {won_games}-{lost_games} in X sets\n\n"
+    out += f"{trny_history_str[player_id, opponent_id]}".strip()
+    return out
+
+
 def write_h2h_to_sheet():
     player_list = [
         url_to_id(x[1]) for x in get_player_tags_urls_list(include_duplicates=False)
@@ -328,9 +353,9 @@ def write_h2h_to_sheet():
             if h2h_str == "0-0":
                 h2h_str = ""
             row.append(h2h_str)
-            notes_to_add[xy_to_sheet(yidx + 1, xidx + 1)] = pvp_results_str[
-                (main_player, opponent)
-            ]
+            notes_to_add[xy_to_sheet(yidx + 1, xidx + 1)] = get_pvp_note_str(
+                main_player, opponent
+            )
         res_array_2d.append(row)
     h2h_sheet.clear()
     h2h_sheet.update("A1", res_array_2d)

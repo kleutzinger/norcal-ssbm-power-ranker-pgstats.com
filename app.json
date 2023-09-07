@@ -7,7 +7,7 @@
   "cron": [
     {
       "command": "sh run.sh",
-      "schedule": "0 */12 * * *"
+      "schedule": "0 */6 * * *"
     }
   ]
 }

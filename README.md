@@ -33,7 +33,6 @@ python src/parse.py
 - [x] write player data to redis
 - [x] write badge data to redis
 - [x] write data to google sheet
-- [ ] parse data to web ui
 - [x] scrape on deploy
 - [ ] scrape on request (button)
 - [x] deploy something to dokku
@@ -54,3 +53,5 @@ python src/parse.py
 - [x] look into adding comments on cells to list when players played
   - [x] notes in h2h
   - [x] notes in wins/losses
+  - [x] tournament set history
+  - [x] total game count

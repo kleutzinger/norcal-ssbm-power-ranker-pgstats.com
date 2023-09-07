@@ -71,7 +71,6 @@ def get_csv(csv_dl) -> list:
     rows = []
     for row in reader:
         rows.append(row)
-        print("\t".join(row))
     return rows
 
 
