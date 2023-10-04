@@ -117,6 +117,7 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
             short_trny = tournament["info"]["tournament_name"][:50]
         else:
             short_trny = "unknown"
+        t_id = tournament["info"]["id"]
         winner_id = set_data["winner_id"]
         loser_id = (
             set([set_data["p1_id"], set_data["p2_id"]]) - set([set_data["winner_id"]])
@@ -149,13 +150,18 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
                 P2P_GAME_COUNTS[(loser_id, winner_id)][0] += int(loser_score)
             except ValueError:
                 logger.error(f"invalid score found: {winner_score}-{loser_score}")
+        t_date = datetime.strptime(
+            tournament["info"]["start_time"], "%Y-%m-%dT%H:%M:%S"
+        )
+        ymd = t_date.strftime("%Y-%m-%d")
+        days_ago = (datetime.now() - t_date).days
 
         if winner_id == player_id:
             # player won
             PLAYER_TO_WINS[player_id][loser_id] += 1
             trny_history_str[
                 (player_id, loser_id)
-            ] += f"win {winner_score}-{loser_score} at {short_trny} {tournament['info']['start_time'].split('T')[0]} [{tournament['info']['id']}]\n\n"
+            ] += f"win {winner_score}-{loser_score} at {short_trny} {ymd} ({days_ago}d) [{t_id}]\n\n"
             PLAYERS_SETS[frozenset((winner_id, loser_id))].add(set_identifier)
 
         elif loser_id == player_id:
@@ -163,7 +169,7 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
             PLAYER_TO_LOSSES[player_id][winner_id] += 1
             trny_history_str[
                 (player_id, winner_id)
-            ] += f"loss {loser_score}-{winner_score} at {short_trny} {tournament['info']['start_time'].split('T')[0]} [{tournament['info']['id']}]\n\n"
+            ] += f"loss {loser_score}-{winner_score} at {short_trny} {ymd} ({days_ago}d) [{t_id}]\n\n"
         else:
             logger.error("unknown result, no valid winner_id found")
             logger.info(set_data)
