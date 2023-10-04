@@ -1,5 +1,7 @@
 from collections import Counter, defaultdict
 from datetime import datetime
+from database import r
+import time
 
 from pytz import timezone
 
@@ -59,7 +61,8 @@ ALL_SETS_EVER = dict()
 ID_TO_NAME = {}
 ID_TO_NUM_TOURNAMENTS = defaultdict(int)
 ID_TO_NUM_TOTAL_SETS = defaultdict(int)
-trny_history_str = defaultdict(str)
+trny_history_strs = defaultdict(list)
+UNIQUE_SET_COUNT = 0
 
 BANNED_TOURNAMENT_IDS = get_banned_tournament_ids()
 
@@ -70,7 +73,8 @@ def add_tag(player_id: str, tag: str):
     # literal null check (gio)
     if tag == "":
         tag = "_null"
-    ID_TO_NAME[player_id] = tag
+    if player_id not in ID_TO_NAME:
+        ID_TO_NAME[player_id] = tag
 
 
 COMBINE_LOOKUP = get_duplicate_dict_from_sheet()
@@ -142,6 +146,8 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
         set_seen_before = set_identifier in ALL_SETS_EVER
         ALL_SETS_EVER[set_identifier] = set_data
         if not set_seen_before:
+            global UNIQUE_SET_COUNT
+            UNIQUE_SET_COUNT += 1
             # add the game counts
             try:
                 P2P_GAME_COUNTS[(winner_id, loser_id)][0] += int(winner_score)
@@ -159,24 +165,24 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
         if winner_id == player_id:
             # player won
             PLAYER_TO_WINS[player_id][loser_id] += 1
-            trny_history_str[
-                (player_id, loser_id)
-            ] += f"win {winner_score}-{loser_score} at {short_trny} {ymd} ({days_ago}d) [{t_id}]\n\n"
+            trny_history_strs[(player_id, loser_id)].append(
+                f"win {winner_score}-{loser_score} at {short_trny} {ymd} ({days_ago}d) [{t_id}]\n\n"
+            )
             PLAYERS_SETS[frozenset((winner_id, loser_id))].add(set_identifier)
 
         elif loser_id == player_id:
             # player lost
             PLAYER_TO_LOSSES[player_id][winner_id] += 1
-            trny_history_str[
-                (player_id, winner_id)
-            ] += f"loss {loser_score}-{winner_score} at {short_trny} {ymd} ({days_ago}d) [{t_id}]\n\n"
+            trny_history_strs[(player_id, winner_id)].append(
+                f"loss {loser_score}-{winner_score} at {short_trny} {ymd} ({days_ago}d) [{t_id}]\n\n"
+            )
         else:
             logger.error("unknown result, no valid winner_id found")
             logger.info(set_data)
     ID_TO_NUM_TOURNAMENTS[player_id] += 1
 
 
-def clear_and_update_notes(cur_sheet: str, range_: str, notes_to_add: dict) -> None:
+def clear_and_update_notes(cur_sheet, range_: str, notes_to_add: dict) -> None:
     logger.info(f"updating notes for {range_} on {cur_sheet}")
     if notes_to_add:
         logger.info(f"clearing notes f{range_}")
@@ -334,7 +340,7 @@ def get_pvp_note_str(player_id, opponent_id):
     out = f"{player_name} vs {opponent_name} "
     out += f"({get_h2h_str(player_id, opponent_id)})"
     out += f"\ngame count: {won_games}-{lost_games} in X sets\n\n"
-    out += f"{trny_history_str[player_id, opponent_id]}".strip()
+    out += f"""{"".join(trny_history_strs[player_id, opponent_id][::-1])}""".strip()
     return out
 
 
@@ -398,14 +404,22 @@ def write_h2h_to_sheet():
 
 def write_meta_to_sheet():
     # write time to meta sheet
+    vals = []
     sa_time = datetime.now(timezone("America/Los_Angeles"))
     updated_time = sa_time.strftime("%Y-%m-%d %I:%M:%S %p")
     update_string = f"last updated {updated_time}"
-    meta_sheet.update("A1", [[update_string]])
+    vals.append(update_string)
+    # vals.append(f"scrape time: {time_taken_scrape:.2f}s")
+    # vals.append(f"parse time: {time_taken_parse:.2f}s")
+    # vals.append(f"total time: {time_taken_parse + time_taken_scrape:.2f}s")
+    vals.append(f"total number of players: {len(ID_TO_NAME)}")
+    vals.append(f"total sets considered: {UNIQUE_SET_COUNT}")
+    meta_sheet.update("A1", [[vals]])
     logger.info(f"successfully updated sheet at {updated_time}")
 
 
 def main():
+    start = time.time()
     for player_name, player_url in get_player_tags_urls_list():
         logger.debug("parsing, player_name=" + player_name)
         player_id = url_to_id(player_url)
@@ -415,6 +429,11 @@ def main():
 
     write_wins_and_losses_to_sheet()
     write_h2h_to_sheet()
+    finish = time.time()
+    time_taken_parse = finish - start
+    # write time taken to file
+    # time_taken_scrape = r.get("time_taken_scrape")
+
     write_meta_to_sheet()
 
     # batch add notes

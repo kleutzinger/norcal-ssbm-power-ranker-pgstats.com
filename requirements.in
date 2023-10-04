@@ -9,3 +9,4 @@ click
 pyAesCrypt
 pytz
 iterfzf
+fakeredis

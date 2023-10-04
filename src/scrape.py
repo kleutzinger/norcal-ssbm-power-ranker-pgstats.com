@@ -167,4 +167,8 @@ def main(skip):
 
 
 if __name__ == "__main__":
+    start = time.time()
     main()
+    finish = time.time()
+    # write time taken to file
+    r.set("time_taken_scrape", finish - start)

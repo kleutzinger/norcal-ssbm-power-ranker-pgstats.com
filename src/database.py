@@ -12,11 +12,12 @@ import gzip
 from io import BytesIO
 from typing import Optional
 import redis
+import fakeredis
 
 REDIS_URL = os.getenv("REDIS_URL")
 if REDIS_URL is None:
-    # use default local redis
-    r = redis.Redis(host="localhost", port=6379, db=0)
+    # use fakeredis
+    r = fakeredis.FakeRedis()
 else:
     r = redis.Redis.from_url(REDIS_URL, db=0)
 
