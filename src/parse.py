@@ -414,7 +414,7 @@ def write_meta_to_sheet():
     # vals.append(f"total time: {time_taken_parse + time_taken_scrape:.2f}s")
     vals.append(f"total number of players: {len(ID_TO_NAME)}")
     vals.append(f"total sets considered: {UNIQUE_SET_COUNT}")
-    meta_sheet.update("A1", [[vals]])
+    meta_sheet.update("A1", [vals])
     logger.info(f"successfully updated sheet at {updated_time}")
 
 
