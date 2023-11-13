@@ -197,7 +197,7 @@ def clear_and_update_notes(cur_sheet, range_: str, notes_to_add: dict) -> None:
             logger.error(e)
 
 
-def get_h2h_str(player_id, opponent_id) -> str:
+def get_h2h_record_str(player_id, opponent_id) -> str:
     wins = PLAYER_TO_WINS[player_id][opponent_id]
     losses = PLAYER_TO_LOSSES[player_id][opponent_id]
     return f"{wins}-{losses}"
@@ -224,7 +224,7 @@ def write_wins_and_losses_to_sheet():
 
     def wins_losses_to_string(player_id, opponent_ids: list[str]) -> str:
         for opponent_id in opponent_ids:
-            yield f"{get_h2h_str(player_id, opponent_id)} {ID_TO_NAME[opponent_id]}"
+            yield f"{get_h2h_record_str(player_id, opponent_id)} {ID_TO_NAME[opponent_id]}"
 
     def apply_formatting_win_loss(
         cur_sheet, res_array_2d, results_dict, notes_to_add: dict = {}
@@ -337,9 +337,10 @@ def get_pvp_note_str(player_id, opponent_id):
         return ""
     player_name = ID_TO_NAME[player_id].upper()
     opponent_name = ID_TO_NAME[opponent_id]
+    total_sets_between = (PLAYER_TO_WINS[player_id][opponent_id]) + (PLAYER_TO_LOSSES[player_id][opponent_id])
     out = f"{player_name} vs {opponent_name} "
-    out += f"({get_h2h_str(player_id, opponent_id)})"
-    out += f"\ngame count: {won_games}-{lost_games} in X sets\n\n"
+    out += f"({get_h2h_record_str(player_id, opponent_id)})"
+    out += f"\ngame count: {won_games}-{lost_games} in {total_sets_between} sets\n\n"
     out += f"""{"".join(trny_history_strs[player_id, opponent_id][::-1])}""".strip()
     return out
 
@@ -361,7 +362,7 @@ def write_h2h_to_sheet():
     for yidx, main_player in enumerate(player_list):
         row = [ID_TO_NAME[main_player]]
         for xidx, opponent in enumerate(player_list):
-            h2h_str = get_h2h_str(main_player, opponent)
+            h2h_str = get_h2h_record_str(main_player, opponent)
             if h2h_str == "0-0":
                 h2h_str = ""
             row.append(h2h_str)
