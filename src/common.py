@@ -19,7 +19,7 @@ def xy_to_sheet(row: int, column: int) -> str:
     return rowcol_to_a1(row + 1, column + 1)
 
 
-def hex_to_rgb(hex_color: str) -> tuple[float, float, float]:
+def hex_to_rgb(hex_color: str) -> tuple[float, ...]:
     # example: #FF0000 -> (1.0, 0.0, 0.0)
     hex_color = hex_color.lstrip("#")
     return tuple(int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))

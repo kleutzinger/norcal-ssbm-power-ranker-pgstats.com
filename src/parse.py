@@ -138,10 +138,8 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
             )
             continue
         ID_TO_NUM_TOTAL_SETS[player_id] += 1
-        winner_name = ID_TO_NAME[winner_id]
-        loser_name = ID_TO_NAME[loser_id]
         set_identifier = (
-            f"{winner_name}-{loser_name}-{tournament['info']['id']}-{set_data['id']}"
+            f"{winner_id}-{loser_id}-{tournament['info']['id']}-{set_data['id']}"
         )
         set_seen_before = set_identifier in ALL_SETS_EVER
         ALL_SETS_EVER[set_identifier] = set_data
