@@ -1,6 +1,5 @@
 loguru
 python-dotenv
-streamlit
 pycodestyle
 redis
 gspread

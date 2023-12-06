@@ -4,168 +4,67 @@
 #
 #    pip-compile
 #
-altair==5.1.2
-    # via streamlit
-attrs==23.1.0
-    # via
-    #   jsonschema
-    #   referencing
-blinker==1.6.2
-    # via streamlit
-cachetools==5.3.1
-    # via
-    #   google-auth
-    #   streamlit
-certifi==2023.7.22
+cachetools==5.3.2
+    # via google-auth
+certifi==2023.11.17
     # via requests
 cffi==1.16.0
     # via cryptography
-charset-normalizer==3.3.0
+charset-normalizer==3.3.2
     # via requests
 click==8.1.7
-    # via
-    #   -r requirements.in
-    #   streamlit
-cryptography==41.0.4
-    # via pyaescrypt
-fakeredis==2.19.0
     # via -r requirements.in
-gitdb==4.0.10
-    # via gitpython
-gitpython==3.1.37
-    # via streamlit
-google-auth==2.23.2
+cryptography==41.0.7
+    # via pyaescrypt
+fakeredis==2.20.0
+    # via -r requirements.in
+google-auth==2.25.1
     # via
     #   google-auth-oauthlib
     #   gspread
 google-auth-oauthlib==1.1.0
     # via gspread
-gspread==5.11.3
+gspread==5.12.2
     # via
     #   -r requirements.in
     #   gspread-formatting
 gspread-formatting==1.1.2
     # via -r requirements.in
-idna==3.4
+idna==3.6
     # via requests
-importlib-metadata==6.8.0
-    # via streamlit
-iterfzf==1.0.0.42.0
+iterfzf==1.1.0.44.0
     # via -r requirements.in
-jinja2==3.1.2
-    # via
-    #   altair
-    #   pydeck
-jsonschema==4.19.1
-    # via altair
-jsonschema-specifications==2023.7.1
-    # via jsonschema
 loguru==0.7.2
     # via -r requirements.in
-markdown-it-py==3.0.0
-    # via rich
-markupsafe==2.1.3
-    # via jinja2
-mdurl==0.1.2
-    # via markdown-it-py
-numpy==1.26.0
-    # via
-    #   altair
-    #   pandas
-    #   pyarrow
-    #   pydeck
-    #   streamlit
 oauthlib==3.2.2
     # via requests-oauthlib
-packaging==23.2
-    # via
-    #   altair
-    #   streamlit
-pandas==2.1.1
-    # via
-    #   altair
-    #   streamlit
-pillow==10.0.1
-    # via streamlit
-protobuf==4.24.4
-    # via streamlit
-pyaescrypt==6.1.0
+pyaescrypt==6.1.1
     # via -r requirements.in
-pyarrow==13.0.0
-    # via streamlit
-pyasn1==0.5.0
+pyasn1==0.5.1
     # via
     #   pyasn1-modules
     #   rsa
 pyasn1-modules==0.3.0
     # via google-auth
-pycodestyle==2.11.0
+pycodestyle==2.11.1
     # via -r requirements.in
 pycparser==2.21
     # via cffi
-pydeck==0.8.0
-    # via streamlit
-pygments==2.16.1
-    # via rich
-python-dateutil==2.8.2
-    # via
-    #   pandas
-    #   streamlit
 python-dotenv==1.0.0
     # via -r requirements.in
 pytz==2023.3.post1
-    # via
-    #   -r requirements.in
-    #   pandas
+    # via -r requirements.in
 redis==5.0.1
     # via
     #   -r requirements.in
     #   fakeredis
-referencing==0.30.2
-    # via
-    #   jsonschema
-    #   jsonschema-specifications
 requests==2.31.0
-    # via
-    #   requests-oauthlib
-    #   streamlit
+    # via requests-oauthlib
 requests-oauthlib==1.3.1
     # via google-auth-oauthlib
-rich==13.6.0
-    # via streamlit
-rpds-py==0.10.3
-    # via
-    #   jsonschema
-    #   referencing
 rsa==4.9
     # via google-auth
-six==1.16.0
-    # via python-dateutil
-smmap==5.0.1
-    # via gitdb
 sortedcontainers==2.4.0
     # via fakeredis
-streamlit==1.27.2
-    # via -r requirements.in
-tenacity==8.2.3
-    # via streamlit
-toml==0.10.2
-    # via streamlit
-toolz==0.12.0
-    # via altair
-tornado==6.3.3
-    # via streamlit
-typing-extensions==4.8.0
-    # via streamlit
-tzdata==2023.3
-    # via pandas
-tzlocal==5.1
-    # via streamlit
-urllib3==2.0.6
+urllib3==2.1.0
     # via requests
-validators==0.22.0
-    # via streamlit
-watchdog==3.0.0
-    # via streamlit
-zipp==3.17.0
-    # via importlib-metadata
