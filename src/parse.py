@@ -34,7 +34,7 @@ equal = Color(0.988, 0.91, 0.698)
 
 # TODO: don't hardcode the sheet name value
 logger.info("creating sheets if nonexistent")
-relevant_doc = gc.open("Norcal PR Summer 2023")
+relevant_doc = gc.open("Current Norcal PR Data")
 present_titles = [w.title for w in relevant_doc.worksheets()]
 for sheet_name in DESIRED_SHEETS:
     if sheet_name not in present_titles:
