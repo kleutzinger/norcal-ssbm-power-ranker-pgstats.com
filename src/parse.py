@@ -1,6 +1,5 @@
 from collections import Counter, defaultdict
 from datetime import datetime
-from database import r
 import time
 
 from pytz import timezone
@@ -11,6 +10,7 @@ from scrape import (
     get_player_tags_urls_list,
     get_duplicate_dict_from_sheet,
     get_banned_tournament_ids,
+    get_past_sheet_links,
 )
 import gspread
 from gspread_formatting import *
@@ -50,8 +50,8 @@ h2h_sheet = relevant_doc.worksheet("h2h")
 meta_sheet = relevant_doc.worksheet("meta")
 
 
-CUT_OFF_DATE_START = datetime(2023, 5, 8)
-CUT_OFF_DATE_END = datetime(2023, 12, 31)
+CUT_OFF_DATE_START = datetime(2024, 1, 1)
+CUT_OFF_DATE_END = datetime(2024, 8, 1)
 
 PLAYER_TO_WINS = defaultdict(Counter)
 PLAYER_TO_LOSSES = defaultdict(Counter)
@@ -404,6 +404,7 @@ def write_h2h_to_sheet():
 def write_meta_to_sheet():
     # write time to meta sheet
     vals = []
+    past_sheets_links = get_past_sheet_links()
     sa_time = datetime.now(timezone("America/Los_Angeles"))
     updated_time = sa_time.strftime("%Y-%m-%d %I:%M:%S %p")
     update_string = f"last updated {updated_time}"
@@ -413,6 +414,7 @@ def write_meta_to_sheet():
     # vals.append(f"total time: {time_taken_parse + time_taken_scrape:.2f}s")
     vals.append(f"total number of players: {len(ID_TO_NAME)}")
     vals.append(f"total sets considered: {UNIQUE_SET_COUNT}")
+    vals.extend(past_sheets_links)
     meta_sheet.update("A1", [vals])
     logger.info(f"successfully updated sheet at {updated_time}")
 

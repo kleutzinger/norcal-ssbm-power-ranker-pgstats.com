@@ -20,6 +20,7 @@ COMBINE_GID = "1516543032"
 PERIODS_GID = "841098674"
 HISTORICALLY_RANKED_GID = "1016791450"
 BANNED_TOURNAMENTS_GID = "1111402135"
+PAST_RANKING_PERIODS_GID = "841098674"
 
 JSON_DIR = "jsons"
 
@@ -87,6 +88,10 @@ def get_banned_tournament_ids() -> list[str]:
     rows = get_csv(dl_link)
     return [row[0] for row in rows[1:]]
 
+def get_past_sheet_links() -> list[str]:
+    dl_link = get_sheet_dl(PAST_RANKING_PERIODS_GID)
+    rows = get_csv(dl_link)
+    return [row[3] for row in rows[1:]]
 
 def get_duplicate_dict_from_sheet() -> dict:
     duplicate_table = dict()
