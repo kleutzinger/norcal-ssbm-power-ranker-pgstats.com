@@ -21,7 +21,7 @@ from encryption import get_service_account_file_path
 from loguru import logger
 
 # These are the sheets that we want to create if they don't exist
-DESIRED_SHEETS = ["wins", "losses", "h2h", "meta"]
+DESIRED_SHEETS = ["wins", "losses", "h2h", "meta", "tournaments considered"]
 
 gc = gspread.service_account(filename=get_service_account_file_path())
 
@@ -48,6 +48,7 @@ wins_sheet = relevant_doc.worksheet("wins")
 losses_sheet = relevant_doc.worksheet("losses")
 h2h_sheet = relevant_doc.worksheet("h2h")
 meta_sheet = relevant_doc.worksheet("meta")
+tournaments_considered_sheet = relevant_doc.worksheet("tournaments considered")
 
 
 CUT_OFF_DATE_START = datetime(2024, 1, 1)
@@ -58,6 +59,9 @@ PLAYER_TO_LOSSES = defaultdict(Counter)
 PLAYERS_SETS = defaultdict(set)
 P2P_GAME_COUNTS = defaultdict(lambda: [0, 0])
 ALL_SETS_EVER = dict()
+TOURNAMENT_INFOS = dict()
+TOURNAMENT_ATTENDEES_SHEETED = defaultdict(set)
+PLAYER_TOURNAMENT_BEST_STANDING = defaultdict(lambda: 999999999)
 ID_TO_NAME = {}
 ID_TO_NUM_TOURNAMENTS = defaultdict(int)
 ID_TO_NUM_TOTAL_SETS = defaultdict(int)
@@ -121,6 +125,7 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
             short_trny = tournament["info"]["tournament_name"][:50]
         else:
             short_trny = "unknown"
+        TOURNAMENT_INFOS[tournament["info"]["id"]] = tournament["info"]
         t_id = tournament["info"]["id"]
         winner_id = set_data["winner_id"]
         loser_id = (
@@ -131,6 +136,14 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
         else:
             winner_score = max(set_data["p1_score"], set_data["p2_score"])
             loser_score = min(set_data["p1_score"], set_data["p2_score"])
+        PLAYER_TOURNAMENT_BEST_STANDING[(t_id, set_data["p1_id"])] = min(
+            PLAYER_TOURNAMENT_BEST_STANDING[(t_id, set_data["p1_id"])],
+            set_data["p1_standing"],
+        )
+        PLAYER_TOURNAMENT_BEST_STANDING[(t_id, set_data["p2_id"])] = min(
+            PLAYER_TOURNAMENT_BEST_STANDING[(t_id, set_data["p2_id"])],
+            set_data["p2_standing"],
+        )
         logger.debug(f"{ID_TO_NAME[winner_id]} beats {ID_TO_NAME[loser_id]}")
         if set_data["dq"]:
             logger.info(
@@ -167,6 +180,7 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
                 f"win {winner_score}-{loser_score} at {short_trny} {ymd} ({days_ago}d) [{t_id}]\n\n"
             )
             PLAYERS_SETS[frozenset((winner_id, loser_id))].add(set_identifier)
+            TOURNAMENT_ATTENDEES_SHEETED[t_id].add(winner_id)
 
         elif loser_id == player_id:
             # player lost
@@ -174,6 +188,7 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
             trny_history_strs[(player_id, winner_id)].append(
                 f"loss {loser_score}-{winner_score} at {short_trny} {ymd} ({days_ago}d) [{t_id}]\n\n"
             )
+            TOURNAMENT_ATTENDEES_SHEETED[t_id].add(loser_id)
         else:
             logger.error("unknown result, no valid winner_id found")
             logger.info(set_data)
@@ -335,7 +350,9 @@ def get_pvp_note_str(player_id, opponent_id):
         return ""
     player_name = ID_TO_NAME[player_id].upper()
     opponent_name = ID_TO_NAME[opponent_id]
-    total_sets_between = (PLAYER_TO_WINS[player_id][opponent_id]) + (PLAYER_TO_LOSSES[player_id][opponent_id])
+    total_sets_between = (PLAYER_TO_WINS[player_id][opponent_id]) + (
+        PLAYER_TO_LOSSES[player_id][opponent_id]
+    )
     out = f"{player_name} vs {opponent_name} "
     out += f"({get_h2h_record_str(player_id, opponent_id)})"
     out += f"\ngame count: {won_games}-{lost_games} in {total_sets_between} sets\n\n"
@@ -409,14 +426,45 @@ def write_meta_to_sheet():
     updated_time = sa_time.strftime("%Y-%m-%d %I:%M:%S %p")
     update_string = f"last updated {updated_time}"
     vals.append(update_string)
-    # vals.append(f"scrape time: {time_taken_scrape:.2f}s")
-    # vals.append(f"parse time: {time_taken_parse:.2f}s")
-    # vals.append(f"total time: {time_taken_parse + time_taken_scrape:.2f}s")
     vals.append(f"total number of players: {len(ID_TO_NAME)}")
     vals.append(f"total sets considered: {UNIQUE_SET_COUNT}")
     vals.extend(past_sheets_links)
     meta_sheet.update("A1", [vals])
     logger.info(f"successfully updated sheet at {updated_time}")
+
+
+def write_tournament_info_to_sheet():
+    columns = [
+        "start_time",
+        "tournament_name",
+        "event_name",
+        "total_attendees",
+        "sheet_attendees",
+    ]
+    vals = [columns]
+    for tournament in sorted(TOURNAMENT_INFOS.values(), key=lambda t: t["start_time"]):
+        tournament_id = tournament["id"]
+        attendees = TOURNAMENT_ATTENDEES_SHEETED[tournament_id]
+        def id_to_placing(id_):
+            return PLAYER_TOURNAMENT_BEST_STANDING[(tournament_id, id_)]
+        attendees_str = ", ".join(
+            [
+                f"{ID_TO_NAME[x]} {id_to_placing(x)}"
+                for x in sorted(
+                    attendees, key=id_to_placing
+                )
+            ]
+        )
+        tournament["sheet_attendees"] = attendees_str
+        tournament["total_attendees"] = tournament["attendees"]
+        inner_val = []
+        for key in columns:
+            inner_val.append(tournament.get(key, ""))
+        vals.append(inner_val)
+    from pprint import pprint
+
+    pprint(vals)
+    tournaments_considered_sheet.update("A1", vals)
 
 
 def main():
@@ -430,6 +478,7 @@ def main():
 
     write_wins_and_losses_to_sheet()
     write_h2h_to_sheet()
+    write_tournament_info_to_sheet()
     finish = time.time()
     time_taken_parse = finish - start
     # write time taken to file
