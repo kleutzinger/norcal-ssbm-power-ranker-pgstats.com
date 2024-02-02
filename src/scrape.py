@@ -70,8 +70,9 @@ def get_csv(csv_dl) -> list:
     f = StringIO(scsv)
     reader = csv.reader(f, delimiter=",")
     rows = []
+    # TODO: handle copy_badge_count_from
     for row in reader:
-        rows.append(row)
+        rows.append(row[:2])
     return rows
 
 
