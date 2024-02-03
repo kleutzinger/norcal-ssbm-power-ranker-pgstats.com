@@ -10,7 +10,6 @@ from scrape import (
     get_player_tags_urls_list,
     get_duplicate_dict_from_sheet,
     get_banned_tournament_ids,
-    get_past_sheet_links,
 )
 import gspread
 from gspread_formatting import *
@@ -421,14 +420,12 @@ def write_h2h_to_sheet():
 def write_meta_to_sheet():
     # write time to meta sheet
     vals = []
-    past_sheets_links = get_past_sheet_links()
     sa_time = datetime.now(timezone("America/Los_Angeles"))
     updated_time = sa_time.strftime("%Y-%m-%d %I:%M:%S %p")
     update_string = f"last updated {updated_time}"
     vals.append(update_string)
     vals.append(f"total number of players: {len(ID_TO_NAME)}")
     vals.append(f"total sets considered: {UNIQUE_SET_COUNT}")
-    vals.extend(past_sheets_links)
     meta_sheet.update("A1", [vals])
     logger.info(f"successfully updated sheet at {updated_time}")
 

@@ -89,10 +89,6 @@ def get_banned_tournament_ids() -> list[str]:
     rows = get_csv(dl_link)
     return [row[0] for row in rows[1:]]
 
-def get_past_sheet_links() -> list[str]:
-    dl_link = get_sheet_dl(PAST_RANKING_PERIODS_GID)
-    rows = get_csv(dl_link)
-    return [row[3] for row in rows[1:]]
 
 def get_duplicate_dict_from_sheet() -> dict:
     duplicate_table = dict()
