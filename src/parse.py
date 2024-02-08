@@ -434,13 +434,14 @@ def write_tournament_info_to_sheet():
     columns = [
         "start_time",
         "tournament_name",
+        "id",
         "event_name",
         "total_attendees",
         "sheet_attendees",
     ]
     vals = [columns]
-    for tournament in sorted(TOURNAMENT_INFOS.values(), key=lambda t: t["start_time"]):
-        tournament_id = tournament["id"]
+    for trny_info in sorted(TOURNAMENT_INFOS.values(), key=lambda t: t["start_time"]):
+        tournament_id = trny_info["id"]
         attendees = TOURNAMENT_ATTENDEES_SHEETED[tournament_id]
         def id_to_placing(id_):
             return PLAYER_TOURNAMENT_BEST_STANDING[(tournament_id, id_)]
@@ -452,11 +453,11 @@ def write_tournament_info_to_sheet():
                 )
             ]
         )
-        tournament["sheet_attendees"] = attendees_str
-        tournament["total_attendees"] = tournament["attendees"]
+        trny_info["sheet_attendees"] = attendees_str
+        trny_info["total_attendees"] = trny_info["attendees"]
         inner_val = []
         for key in columns:
-            inner_val.append(tournament.get(key, ""))
+            inner_val.append(trny_info.get(key, ""))
         vals.append(inner_val)
     from pprint import pprint
 
