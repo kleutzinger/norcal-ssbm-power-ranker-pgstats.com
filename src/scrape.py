@@ -71,15 +71,13 @@ def get_csv(csv_dl, column_limit=None) -> list:
 
     f = StringIO(scsv)
     reader = csv.reader(f, delimiter=",")
-    rows = []
+    output = []
     # TODO: handle copy_badge_count_from
     for row in reader:
         if column_limit is not None:
-            rows.append(row[:column_limit])
-            if len (row) < column_limit:
-                rows[-1].extend([""] * (column_limit - len(row)))
-        rows.append(row)
-    return rows
+            output.append(row[:column_limit])
+        output.append(row)
+    return output
 
 
 def get_player_tags_urls_list(include_duplicates: bool = True) -> list[tuple[str, str]]:
