@@ -3,12 +3,13 @@ from datetime import timedelta
 from io import StringIO
 import json
 import time
-from typing import Optional
+from typing import Optional, DefaultDict
 import click
 import requests
 from loguru import logger
 from database import r, setj
 from common import id_to_url, url_to_id
+from collections import defaultdict
 
 
 SHEET_ID = "1EQmk2ElCjlC6LiYrmqBcjxpAHL49PTgJRuOwcY1MlPY"
@@ -21,6 +22,7 @@ PERIODS_GID = "841098674"
 HISTORICALLY_RANKED_GID = "1016791450"
 BANNED_TOURNAMENTS_GID = "1111402135"
 PAST_RANKING_PERIODS_GID = "841098674"
+PLAYER_SWAPPER_GID = "1035380690"
 
 JSON_DIR = "jsons"
 
@@ -100,6 +102,22 @@ def get_duplicate_dict_from_sheet() -> dict:
         else:
             last_valid_id = url_to_id(url)
     return duplicate_table
+
+
+def get_player_swapper_dict() -> DefaultDict[str, list[tuple[str, str]]]:
+    """
+    {pg_stats_id: {tournament_id: [bracket_player_pgstats, actual_player_pgstats]}
+    sometimes players enter brackets under someone else's account
+    """
+    dl_link = get_sheet_dl(PLAYER_SWAPPER_GID)
+    output = defaultdict(list)
+    rows = get_csv(dl_link)
+    for row in rows[1:]:
+        tournament_id, bracket_player_pgstats, actual_player_pgstats, note = row
+        brack_id = url_to_id(bracket_player_pgstats)
+        actual_id = url_to_id(actual_player_pgstats)
+        output[tournament_id].append([brack_id, actual_id])
+    return output
 
 
 def get_and_parse_player(player_id: str) -> None:

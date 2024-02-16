@@ -10,6 +10,7 @@ from scrape import (
     get_player_tags_urls_list,
     get_duplicate_dict_from_sheet,
     get_banned_tournament_ids,
+    get_player_swapper_dict,
 )
 import gspread
 from gspread_formatting import *
@@ -68,6 +69,7 @@ trny_history_strs = defaultdict(list)
 UNIQUE_SET_COUNT = 0
 
 BANNED_TOURNAMENT_IDS = get_banned_tournament_ids()
+PLAYER_SWAPPER_DICT = get_player_swapper_dict()
 
 
 def add_tag(player_id: str, tag: str):
@@ -104,10 +106,27 @@ def is_valid_tournament(
 
 
 def rewrite_ids(set_data):
+    """
+    overwrite or combine player ids due to duplicate accts
+    or players entering brackets under someone else's account
+    """
+
     for key in ["p1_id", "p2_id", "winner_id"]:
         if set_data[key] in COMBINE_LOOKUP:
             set_data[key] = COMBINE_LOOKUP[set_data[key]]
+        set_data[key] = player_at_tournament_swap(
+            set_data["tournament_id"], set_data[key]
+        )
     return set_data
+
+
+def player_at_tournament_swap(tournament_id, player_id):
+    swaps_at_tournament = PLAYER_SWAPPER_DICT.get(tournament_id, [])
+    for swap in swaps_at_tournament:
+        if swap[0] == player_id:
+            print("SWAPPING", player_id, "TO", swap[1])
+            return swap[1]
+    return player_id
 
 
 def parse_tournament(tournament: dict, player_id=None) -> None:
@@ -443,14 +462,14 @@ def write_tournament_info_to_sheet():
     for trny_info in sorted(TOURNAMENT_INFOS.values(), key=lambda t: t["start_time"]):
         tournament_id = trny_info["id"]
         attendees = TOURNAMENT_ATTENDEES_SHEETED[tournament_id]
+
         def id_to_placing(id_):
             return PLAYER_TOURNAMENT_BEST_STANDING[(tournament_id, id_)]
+
         attendees_str = ", ".join(
             [
                 f"{ID_TO_NAME[x]} {id_to_placing(x)}"
-                for x in sorted(
-                    attendees, key=id_to_placing
-                )
+                for x in sorted(attendees, key=id_to_placing)
             ]
         )
         trny_info["sheet_attendees"] = attendees_str
