@@ -113,6 +113,7 @@ def get_player_swapper_dict() -> DefaultDict[str, list[tuple[str, str]]]:
     output = defaultdict(list)
     rows = get_csv(dl_link)
     for row in rows[1:]:
+        print(row)
         tournament_id, bracket_player_pgstats, actual_player_pgstats, note = row
         brack_id = url_to_id(bracket_player_pgstats)
         actual_id = url_to_id(actual_player_pgstats)
