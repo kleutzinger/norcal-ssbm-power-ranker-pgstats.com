@@ -39,7 +39,9 @@ python src/parse.py
 - [x] deploy something to dokku
 - [x] scrape on cron on dokku
 - [x] enforce better ordering of ranked players in sheets. i could try some heuristics like the order they appear in the google sheet. The ranking data from pgstats isn't too helpful.
+- [ ] in main h2h comment header, also count number of uniquee tournaments between players
   - [ ] make it even better ordering. (clone a certain player's badge count -1?)
+  - [ ] with rolling subtractive count for multi-copies
 - [x] color code / format the h2h sheet
 - [x] color code / format wins/losses sheet
 - [x] ignore irrelevant tournaments (like side events). Taken from list of ids in the google sheet
