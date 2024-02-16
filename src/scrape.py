@@ -65,7 +65,7 @@ def fetch_url_with_retry(
     return None  # Return None if all retry attempts fail
 
 
-def get_csv(csv_dl) -> list:
+def get_csv(csv_dl, column_limit=None) -> list:
     resp = fetch_url_with_retry(csv_dl)
     scsv = resp.text
 
@@ -74,13 +74,17 @@ def get_csv(csv_dl) -> list:
     rows = []
     # TODO: handle copy_badge_count_from
     for row in reader:
-        rows.append(row[:2])
+        if column_limit is not None:
+            rows.append(row[:column_limit])
+            if len (row) < column_limit:
+                rows[-1].extend([""] * (column_limit - len(row)))
+        rows.append(row)
     return rows
 
 
 def get_player_tags_urls_list(include_duplicates: bool = True) -> list[tuple[str, str]]:
     dl_link = get_sheet_dl(PLAYERS_GID)
-    rows = get_csv(dl_link)
+    rows = get_csv(dl_link, column_limit=2)
     if not include_duplicates:
         return [row for row in rows[1:] if row[0] != "^"]
     return rows[1:]
@@ -111,9 +115,8 @@ def get_player_swapper_dict() -> DefaultDict[str, list[tuple[str, str]]]:
     """
     dl_link = get_sheet_dl(PLAYER_SWAPPER_GID)
     output = defaultdict(list)
-    rows = get_csv(dl_link)
+    rows = get_csv(dl_link, column_limit=4)
     for row in rows[1:]:
-        print(row)
         tournament_id, bracket_player_pgstats, actual_player_pgstats, note = row
         brack_id = url_to_id(bracket_player_pgstats)
         actual_id = url_to_id(actual_player_pgstats)
