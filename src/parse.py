@@ -115,7 +115,7 @@ def rewrite_ids(set_data):
         if set_data[key] in COMBINE_LOOKUP:
             set_data[key] = COMBINE_LOOKUP[set_data[key]]
         set_data[key] = player_at_tournament_swap(
-            set_data["tournament_id"], set_data[key]
+            set_data["event_id"], set_data[key]
         )
     return set_data
 
