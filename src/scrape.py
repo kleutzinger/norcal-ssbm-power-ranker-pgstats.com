@@ -76,7 +76,8 @@ def get_csv(csv_dl, column_limit=None) -> list:
     for row in reader:
         if column_limit is not None:
             output.append(row[:column_limit])
-        output.append(row)
+        else:
+            output.append(row)
     return output
 
 
