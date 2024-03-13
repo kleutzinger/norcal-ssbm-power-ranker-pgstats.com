@@ -455,6 +455,7 @@ def write_tournament_info_to_sheet():
         "tournament_name",
         "id",
         "event_name",
+        "location",
         "total_attendees",
         "sheet_attendees",
     ]
@@ -474,6 +475,10 @@ def write_tournament_info_to_sheet():
         )
         trny_info["sheet_attendees"] = attendees_str
         trny_info["total_attendees"] = trny_info["attendees"]
+        loc = trny_info.get("location", {})
+        trny_info[
+            "location"
+        ] = f"{loc.get('city', '')}, {loc.get('state', '')} {loc.get('country', '')}"
         inner_val = []
         for key in columns:
             inner_val.append(trny_info.get(key, ""))
