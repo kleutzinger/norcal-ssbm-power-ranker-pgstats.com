@@ -3,6 +3,7 @@ from datetime import datetime
 import time
 
 from pytz import timezone
+from copy import deepcopy
 
 from common import hex_to_rgb, url_to_id, xy_to_sheet
 from scrape import (
@@ -105,7 +106,7 @@ def is_valid_tournament(
     return True
 
 
-def rewrite_ids(set_data):
+def rewrite_ids(set_data: dict) -> dict:
     """
     overwrite or combine player ids due to duplicate accts
     or players entering brackets under someone else's account
@@ -114,9 +115,7 @@ def rewrite_ids(set_data):
     for key in ["p1_id", "p2_id", "winner_id"]:
         if set_data[key] in COMBINE_LOOKUP:
             set_data[key] = COMBINE_LOOKUP[set_data[key]]
-        set_data[key] = player_at_tournament_swap(
-            set_data["event_id"], set_data[key]
-        )
+        set_data[key] = player_at_tournament_swap(set_data["event_id"], set_data[key])
     return set_data
 
 
@@ -134,7 +133,7 @@ def parse_tournament(tournament: dict, player_id=None) -> None:
     for set_data in tournament["sets"]:
         if player_id in COMBINE_LOOKUP:
             player_id = COMBINE_LOOKUP[player_id]
-        set_data = rewrite_ids(set_data)
+        set_data = rewrite_ids(deepcopy(set_data))
         add_tag(set_data["p1_id"], set_data["p1_tag"])
         add_tag(set_data["p2_id"], set_data["p2_tag"])
         get_or_set_player_badge_count(set_data["p1_id"])
