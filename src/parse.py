@@ -459,7 +459,7 @@ def write_tournament_info_to_sheet():
         "sheet_attendees",
     ]
     vals = [columns]
-    for trny_info in sorted(TOURNAMENT_INFOS.values(), key=lambda t: t["start_time"]):
+    for trny_info in sorted(TOURNAMENT_INFOS.values(), key=lambda t: t["start_time"], reverse=True):
         tournament_id = trny_info["id"]
         attendees = TOURNAMENT_ATTENDEES_SHEETED[tournament_id]
 
