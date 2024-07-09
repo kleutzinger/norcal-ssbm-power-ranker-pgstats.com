@@ -53,7 +53,7 @@ tournaments_considered_sheet = relevant_doc.worksheet("tournaments considered")
 
 
 CUT_OFF_DATE_START = datetime(2024, 1, 1)
-CUT_OFF_DATE_END = datetime(2024, 8, 1)
+CUT_OFF_DATE_END = datetime(2024, 7, 1)
 
 PLAYER_TO_WINS = defaultdict(Counter)
 PLAYER_TO_LOSSES = defaultdict(Counter)
