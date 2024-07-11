@@ -12,7 +12,6 @@ from scrape import (
     get_duplicate_dict_from_sheet,
     get_banned_tournament_ids,
     get_player_swapper_dict,
-    write_copy_badge_count_from_sheet,
 )
 import gspread
 from gspread_formatting import *
@@ -85,7 +84,6 @@ def add_tag(player_id: str, tag: str):
 
 
 COMBINE_LOOKUP = get_duplicate_dict_from_sheet()
-BADGE_COUNT_OVERRIDE = get_copy_badge_count_from_sheet()
 
 
 def player_to_player_history(player_id, opponent_id):
