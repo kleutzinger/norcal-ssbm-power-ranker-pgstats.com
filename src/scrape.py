@@ -203,6 +203,7 @@ def get_or_set_player_badge_count(player_id: str, copy_dict=None) -> int:
 @click.command()
 @click.option("--skip", is_flag=True, default=False, help="skip players already in db")
 def main(skip):
+    write_copy_badge_count_from_sheet()
     scrape_all_players(skip_known=skip)
 
 

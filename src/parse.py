@@ -492,7 +492,6 @@ def write_tournament_info_to_sheet():
 
 def main():
     start = time.time()
-    write_copy_badge_count_from_sheet()
     for player_name, player_url in get_player_tags_urls_list():
         logger.debug("parsing, player_name=" + player_name)
         player_id = url_to_id(player_url)
