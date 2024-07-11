@@ -81,9 +81,9 @@ def get_csv(csv_dl, column_limit=None) -> list:
     return output
 
 
-def get_player_tags_urls_list(include_duplicates: bool = True) -> list[tuple[str, str]]:
+def get_player_tags_urls_list(include_duplicates: bool = True, column_limit=2) -> list[tuple]:
     dl_link = get_sheet_dl(PLAYERS_GID)
-    rows = get_csv(dl_link, column_limit=2)
+    rows = get_csv(dl_link, column_limit=column_limit)
     if not include_duplicates:
         return [row for row in rows[1:] if row[0] != "^"]
     return rows[1:]
@@ -168,17 +168,51 @@ def scrape_all_players(skip_known: bool = False):
         get_and_parse_player(player_id)
 
 
-def get_or_set_player_badge_count(player_id: str) -> int:
+def write_copy_badge_count_from_sheet() -> dict:
+    r.delete("copy_badge_count_from")
+    id2idmap = dict()
+    rows = get_player_tags_urls_list(column_limit=3)
+    for tag, url, copy_url in rows[1:]:
+        print(f'MAPPING {tag}, {url}, {copy_url}')
+        a = url_to_id(url)
+        if not copy_url:
+            continue
+        b = url_to_id(copy_url)
+        id2idmap[a] = b
+    r.set("copy_badge_count_from", json.dumps(id2idmap), ex=timedelta(days=3))
+
+
+def improved_hash_to_float(s: str) -> float:
+    # lengthen string
+    s = s * 10
+    # Define a base and a prime modulus
+    base = 31
+    modulus = 2**64 - 1  # A large prime number close to 64-bit integer max
+    # Compute a hash-like integer value based on character codes
+    hash_value = 0
+    for char in s:
+        hash_value = (hash_value * base + ord(char)) % modulus
+    # Normalize the hash value to the range [0, 1]
+    normalized_value = hash_value / modulus
+    return normalized_value
+
+def get_or_set_player_badge_count(player_id: str, copy_dict=None) -> float:
+    copy_dict = json.loads(r.get("copy_badge_count_from")) or dict()
+    offset = 0
+    if copy_dict is not None and player_id in copy_dict:
+            offset = improved_hash_to_float(player_id)
+            player_id = copy_dict[player_id]
     badge_key = f"{player_id}:num_badges"
     in_db = r.get(badge_key)
     if in_db is not None:
-        return int(in_db)
+        return float(in_db)
     data = fetch_url_with_retry(
         f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
     ).json()
     num_badges = len(
         [i for i in data["result"]["badges"]["by_events"] if not i["online"]]
     )
+    num_badges -= offset
     r.set(badge_key, num_badges, ex=timedelta(days=3))
     return num_badges
 
@@ -186,6 +220,7 @@ def get_or_set_player_badge_count(player_id: str) -> int:
 @click.command()
 @click.option("--skip", is_flag=True, default=False, help="skip players already in db")
 def main(skip):
+    write_copy_badge_count_from_sheet()
     scrape_all_players(skip_known=skip)
 
 
