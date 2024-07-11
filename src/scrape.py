@@ -179,7 +179,7 @@ def write_copy_badge_count_from_sheet() -> dict:
             continue
         b = url_to_id(copy_url)
         id2idmap[a] = b
-    r.set("copy_badge_count_from", json.dumps(id2idmap))
+    r.set("copy_badge_count_from", json.dumps(id2idmap), ex=timedelta(days=3))
 
 
 def get_or_set_player_badge_count(player_id: str, copy_dict=None) -> int:
