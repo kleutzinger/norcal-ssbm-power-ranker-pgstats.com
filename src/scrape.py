@@ -182,9 +182,25 @@ def write_copy_badge_count_from_sheet() -> dict:
     r.set("copy_badge_count_from", json.dumps(id2idmap), ex=timedelta(days=3))
 
 
-def get_or_set_player_badge_count(player_id: str, copy_dict=None) -> int:
+def improved_hash_to_float(s: str) -> float:
+    # lengthen string
+    s = s * 10
+    # Define a base and a prime modulus
+    base = 31
+    modulus = 2**64 - 1  # A large prime number close to 64-bit integer max
+    # Compute a hash-like integer value based on character codes
+    hash_value = 0
+    for char in s:
+        hash_value = (hash_value * base + ord(char)) % modulus
+    # Normalize the hash value to the range [0, 1]
+    normalized_value = hash_value / modulus
+    return normalized_value
+
+def get_or_set_player_badge_count(player_id: str, copy_dict=None) -> float:
     copy_dict = json.loads(r.get("copy_badge_count_from")) or dict()
+    offset = 0
     if copy_dict is not None and player_id in copy_dict:
+            offset = improved_hash_to_float(player_id)
             player_id = copy_dict[player_id]
     badge_key = f"{player_id}:num_badges"
     in_db = r.get(badge_key)
@@ -196,6 +212,7 @@ def get_or_set_player_badge_count(player_id: str, copy_dict=None) -> int:
     num_badges = len(
         [i for i in data["result"]["badges"]["by_events"] if not i["online"]]
     )
+    num_badges -= offset
     r.set(badge_key, num_badges, ex=timedelta(days=3))
     return num_badges
 
