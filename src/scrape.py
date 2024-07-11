@@ -205,7 +205,7 @@ def get_or_set_player_badge_count(player_id: str, copy_dict=None) -> float:
     badge_key = f"{player_id}:num_badges"
     in_db = r.get(badge_key)
     if in_db is not None:
-        return int(in_db)
+        return float(in_db)
     data = fetch_url_with_retry(
         f"https://api.pgstats.com/players/profile?playerId={player_id}&game=melee"
     ).json()
