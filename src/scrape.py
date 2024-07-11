@@ -81,9 +81,9 @@ def get_csv(csv_dl, column_limit=None) -> list:
     return output
 
 
-def get_player_tags_urls_list(include_duplicates: bool = True) -> list[tuple[str, str]]:
+def get_player_tags_urls_list(include_duplicates: bool = True, column_limit=2) -> list[tuple]:
     dl_link = get_sheet_dl(PLAYERS_GID)
-    rows = get_csv(dl_link, column_limit=2)
+    rows = get_csv(dl_link, column_limit=column_limit)
     if not include_duplicates:
         return [row for row in rows[1:] if row[0] != "^"]
     return rows[1:]
@@ -168,7 +168,24 @@ def scrape_all_players(skip_known: bool = False):
         get_and_parse_player(player_id)
 
 
-def get_or_set_player_badge_count(player_id: str) -> int:
+def write_copy_badge_count_from_sheet() -> dict:
+    r.delete("copy_badge_count_from")
+    id2idmap = dict()
+    rows = get_player_tags_urls_list(column_limit=3)
+    for tag, url, copy_url in rows[1:]:
+        print(f'MAPPING {tag}, {url}, {copy_url}')
+        a = url_to_id(url)
+        if not copy_url:
+            continue
+        b = url_to_id(copy_url)
+        id2idmap[a] = b
+    r.set("copy_badge_count_from", json.dumps(id2idmap))
+
+
+def get_or_set_player_badge_count(player_id: str, copy_dict=None) -> int:
+    copy_dict = json.loads(r.get("copy_badge_count_from")) or dict()
+    if copy_dict is not None and player_id in copy_dict:
+            player_id = copy_dict[player_id]
     badge_key = f"{player_id}:num_badges"
     in_db = r.get(badge_key)
     if in_db is not None:
